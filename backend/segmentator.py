@@ -71,10 +71,17 @@ def run_segmentation_pipeline(series_uid: str) -> dict:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
                 
-        # 2. Unzip files
+        # 2. Unzip files flattening any nested Orthanc directory structure
         print("Extracting ZIP archive...")
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(dicom_input_dir)
+            for member in zip_ref.infolist():
+                filename = os.path.basename(member.filename)
+                if not filename:
+                    continue
+                source = zip_ref.open(member)
+                target_path = os.path.join(dicom_input_dir, filename)
+                with open(target_path, "wb") as target:
+                    shutil.copyfileobj(source, target)
             
         # Verify slices were extracted
         slices = [f for f in os.listdir(dicom_input_dir) if os.path.isfile(os.path.join(dicom_input_dir, f))]
