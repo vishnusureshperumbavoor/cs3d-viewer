@@ -63,7 +63,10 @@ A high-performance, web-based 3D viewer for DICOM Segmentation (SEG) files. This
 To search and view DICOM studies in the viewer, you need to populate your local Orthanc instance. If you do not have any DICOM data on hand, you can download a sample dataset from [Hugging Face](https://huggingface.co/datasets/vishnusureshperumbavoor/dicom_public_dataset/tree/main).
 
 1. **Open Orthanc Explorer 2**:
-   Navigate to [http://localhost:8042/ui/app/index.html](http://localhost:8042/ui/app/index.html) (or click **Open Orthanc Explorer 2** from the default page at [http://localhost:8042](http://localhost:8042)).
+   Navigate to [http://localhost:8042/ui/app/index.html](http://localhost:8042/ui/app/index.html) (or click **Open Orthanc Explorer 2** from the default page at [http://localhost:8042](http://localhost:8042)). 
+   *Note: Use the default credentials if prompted for login:*
+   * **Username**: `orthanc`
+   * **Password**: `orthanc`
 2. **Upload Files**:
    * Click the **Upload** option in the sidebar/top menu.
    * Drag and drop your DICOM `.dcm` files (or select a directory containing the slice series).
@@ -79,17 +82,9 @@ To search and view DICOM studies in the viewer, you need to populate your local 
 4. **Control**: Use the toggle switches to show/hide specific segments.
 5. **Export**: Click the download icon next to a segment to save it as an STL file.
 
-## 🏗️ Architecture
-
-The project follows a modular structure:
-- `/src/components`: UI components including the `VtkViewer` and `ControlPanel`.
-- `/src/services`: Background services for handling heavy computations.
-- `/src/workers`: Web Workers for running WASM-based segmentation processing off the main thread.
-- `/src/utils`: Helper functions for DICOM parsing and data conversion.
-
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome!
 
 ## 📄 License
 

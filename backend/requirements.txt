@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+requests
+totalsegmentator
+highdicom
+pydicom
+python-multipart
