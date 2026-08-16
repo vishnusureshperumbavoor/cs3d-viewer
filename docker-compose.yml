@@ -6,3 +6,20 @@ services:
       - "8042:8042"
       - "4242:4242"
     restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fastapi-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ORTHANC_URL=http://orthanc:8042
+      - ORTHANC_USER=orthanc
+      - ORTHANC_PASSWORD=orthanc
+    volumes:
+      - ~/.totalsegmentator:/root/.totalsegmentator
+    depends_on:
+      - orthanc
+    restart: unless-stopped

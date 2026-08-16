@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from backend.segmentator import run_segmentation_pipeline
+from segmentator import run_segmentation_pipeline
 
 app = FastAPI(title="TotalSegmentator AI Backend")
 
