@@ -31,19 +31,6 @@ A high-performance, web-based 3D viewer for DICOM Segmentation (SEG) files. This
 - [Node.js](https://nodejs.org/) (v16.x or higher)
 - npm or yarn
 
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/vishnusureshperumbavoor/segmentation-dicom-viewer.git
-   cd segmentation-dicom-viewer
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
 ### Running Locally
 
 This application can run in a hybrid developer mode: the **Orthanc DICOM Server** and the **FastAPI/TotalSegmentator AI Backend** run together in a Docker Compose stack, while the **React Frontend** runs locally on the host machine for optimal hot-reloading speed.
