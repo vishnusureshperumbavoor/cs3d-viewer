@@ -1,21 +1,12 @@
-import { WorklistSearchForm, WorklistTable } from "../components/worklist";
+import { WorklistTable } from "../components/worklist";
 import { useWorklist } from "../hooks";
 import { Logo } from "../components";
 
 export default function WorklistPage() {
   const {
-    qidoBaseUrl,
-    setQidoBaseUrl,
-    patientName,
-    setPatientName,
-    patientId,
-    setPatientId,
-    limit,
-    setLimit,
     loading,
     error,
     studies,
-    handleSearchSubmit,
   } = useWorklist();
 
   const handleStudyClick = (studyInstanceUid: string) => {
@@ -43,26 +34,9 @@ export default function WorklistPage() {
       </nav>
 
       <main className="worklist-layout">
-        <section className="panel-card">
-          <h2>Search</h2>
-          <p>Query studies with QIDO-RS. Viewer routes are reserved for later.</p>
-          <WorklistSearchForm
-            qidoBaseUrl={qidoBaseUrl}
-            patientName={patientName}
-            patientId={patientId}
-            limit={limit}
-            loading={loading}
-            onQidoBaseUrlChange={setQidoBaseUrl}
-            onPatientNameChange={setPatientName}
-            onPatientIdChange={setPatientId}
-            onLimitChange={setLimit}
-            onSubmit={handleSearchSubmit}
-          />
-          {error ? <p className="worklist-error">{error}</p> : null}
-        </section>
-
         <section className="panel-card worklist-results">
           <h2>Studies ({studies.length})</h2>
+          {error ? <p className="worklist-error">{error}</p> : null}
           <WorklistTable
             studies={studies}
             loading={loading}

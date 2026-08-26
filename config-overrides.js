@@ -6,6 +6,7 @@ module.exports = {
       fs: false,
       url: require.resolve("url/"),
     };
+    config.ignoreWarnings = [/Failed to parse source map/];
     return config;
   },
   devServer: function (configFunction) {
