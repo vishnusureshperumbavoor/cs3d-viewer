@@ -24,13 +24,74 @@ export interface DicomSegData {
   sliceThickness: number;
 }
 
-const DEFAULT_SEGMENT_COLORS: Record<number, { hex: string; rgba: [number, number, number] }> = {
-  1: { hex: "#10b981", rgba: [16, 185, 129] }, // Kidney - Emerald Green
-  2: { hex: "#ef4444", rgba: [239, 68, 68] },  // Renal Tumor - Red
-  3: { hex: "#3b82f6", rgba: [59, 130, 246] },  // Blue
-  4: { hex: "#f59e0b", rgba: [245, 158, 11] }, // Amber
-  5: { hex: "#8b5cf6", rgba: [139, 92, 246] }, // Purple
-};
+// 40 distinct high-contrast medical palette colors for organ & bone segmentations
+const DISTINCT_PALETTE: Array<{ hex: string; rgba: [number, number, number] }> = [
+  { hex: "#10b981", rgba: [16, 185, 129] },  // Emerald Green (Kidney / Liver)
+  { hex: "#ef4444", rgba: [239, 68, 68] },   // Red / Crimson (Tumor / Heart)
+  { hex: "#3b82f6", rgba: [59, 130, 246] },  // Blue (Vessels / Spleen)
+  { hex: "#f59e0b", rgba: [245, 158, 11] },  // Amber (Pancreas)
+  { hex: "#8b5cf6", rgba: [139, 92, 246] },  // Purple (Gallbladder)
+  { hex: "#06b6d4", rgba: [6, 182, 212] },   // Cyan (Lungs)
+  { hex: "#ec4899", rgba: [236, 72, 153] },  // Pink (Stomach)
+  { hex: "#eab308", rgba: [234, 179, 8] },   // Yellow (Duodenum)
+  { hex: "#14b8a6", rgba: [20, 184, 166] },  // Teal (Small Bowel)
+  { hex: "#f97316", rgba: [249, 115, 22] },  // Orange (Colon)
+  { hex: "#6366f1", rgba: [99, 102, 241] },  // Indigo (Bladder)
+  { hex: "#84cc16", rgba: [132, 204, 22] },  // Lime (Prostate / Uterus)
+  { hex: "#a855f7", rgba: [168, 85, 247] },  // Bright Purple (Thyroid)
+  { hex: "#d946ef", rgba: [217, 70, 239] },  // Magenta (Trachea)
+  { hex: "#0ea5e9", rgba: [14, 165, 233] },  // Sky Blue (Aorta)
+  { hex: "#22c55e", rgba: [34, 197, 94] },   // Light Green (IVC)
+  { hex: "#fb7185", rgba: [251, 113, 133] }, // Coral (Portal Vein)
+  { hex: "#38bdf8", rgba: [56, 189, 248] },  // Light Cyan (Pulmonary Artery)
+  { hex: "#f43f5e", rgba: [244, 63, 94] },   // Rose (Vertebrae)
+  { hex: "#fbbf24", rgba: [251, 191, 36] },  // Gold (Ribs)
+  { hex: "#4ade80", rgba: [74, 222, 128] },  // Mint (Pelvis)
+  { hex: "#c084fc", rgba: [192, 132, 252] }, // Lavender (Femurs)
+  { hex: "#f472b6", rgba: [244, 114, 182] }, // Blossom (Muscles)
+  { hex: "#2dd4bf", rgba: [45, 212, 191] },  // Aquamarine (Psoas)
+  { hex: "#a3e635", rgba: [163, 230, 53] },  // Chartreuse
+  { hex: "#e879f9", rgba: [232, 121, 249] }, // Fuchsia
+  { hex: "#facc15", rgba: [250, 204, 21] },  // Sunflower
+  { hex: "#34d399", rgba: [52, 211, 153] },  // Sea Green
+  { hex: "#818cf8", rgba: [129, 140, 248] }, // Periwinkle
+  { hex: "#fb923c", rgba: [251, 146, 60] },  // Tangerine
+  { hex: "#38ef7d", rgba: [56, 239, 125] },  // Spring
+  { hex: "#11998e", rgba: [17, 153, 142] },  // Emerald Dark
+  { hex: "#ff6b6b", rgba: [255, 107, 107] }, // Salmon Red
+  { hex: "#4ecdc4", rgba: [78, 205, 196] },  // Robin Egg
+  { hex: "#45b649", rgba: [69, 182, 73] },   // Leaf Green
+  { hex: "#d4fc79", rgba: [212, 252, 121] }, // Electric Lime
+  { hex: "#96e6a1", rgba: [150, 230, 161] }, // Soft Jade
+  { hex: "#845ec2", rgba: [132, 94, 194] },  // Deep Purple
+  { hex: "#ff9671", rgba: [255, 150, 113] }, // Peach
+  { hex: "#ffc75f", rgba: [255, 199, 95] },  // Golden Sand
+];
+
+function hslToRgb(h: number, s: number, l: number): { hex: string; rgba: [number, number, number] } {
+  s /= 100;
+  l /= 100;
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const r = Math.round(f(0) * 255);
+  const g = Math.round(f(8) * 255);
+  const b = Math.round(f(4) * 255);
+  const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  return { hex, rgba: [r, g, b] };
+}
+
+export function getSegmentColor(segNum: number): { hex: string; rgba: [number, number, number] } {
+  const index = (segNum - 1) % DISTINCT_PALETTE.length;
+  const cycle = Math.floor((segNum - 1) / DISTINCT_PALETTE.length);
+  if (cycle === 0 && DISTINCT_PALETTE[index]) {
+    return DISTINCT_PALETTE[index];
+  }
+  // Golden ratio HSL generation for seamless distinct color looping
+  const goldenHue = (segNum * 137.508) % 360;
+  return hslToRgb(goldenHue, 75, 55);
+}
 
 export const dicomSegService = {
   /**
@@ -137,10 +198,7 @@ export const dicomSegService = {
       const segNum = s.SegmentNumber !== undefined ? Number(s.SegmentNumber) : idx + 1;
       const label = s.SegmentLabel || `Segment ${segNum}`;
       const description = s.SegmentDescription || label;
-      const colorDef = DEFAULT_SEGMENT_COLORS[segNum] || {
-        hex: "#06b6d4",
-        rgba: [6, 182, 212] as [number, number, number],
-      };
+      const colorDef = getSegmentColor(segNum);
 
       return {
         segmentNumber: segNum,
