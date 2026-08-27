@@ -462,7 +462,8 @@ body {
   transition: all 0.2s ease;
 }
 
-.icon-download-btn {
+.icon-download-btn,
+.icon-action-btn {
   background: transparent;
   border: none;
   color: #94a3b8;
@@ -475,25 +476,16 @@ body {
   transition: color 0.2s ease, transform 0.15s ease, background 0.2s ease;
 }
 
-.icon-download-btn:hover {
+.icon-download-btn:hover,
+.icon-action-btn:hover {
   color: #60a5fa;
   background: rgba(96, 165, 250, 0.12);
   transform: translateY(-1px);
 }
 
-.icon-download-btn:active {
+.icon-download-btn:active,
+.icon-action-btn:active {
   transform: translateY(0);
-}
-
-.open-btn {
-  background: #0f172a;
-  color: #60a5fa;
-  border: 1px solid #2563eb;
-}
-
-.open-btn:hover {
-  background: #2563eb;
-  color: #ffffff;
 }
 
 .ready-badge {

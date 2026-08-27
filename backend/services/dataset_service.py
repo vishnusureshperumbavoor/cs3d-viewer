@@ -23,7 +23,7 @@ class DatasetService:
                 patient_id = patient_tags.get("PatientID", "")
                 study_uid = main_tags.get("StudyInstanceUID")
 
-                combined = f"{desc} {patient_name} {patient_id}".lower()
+                combined = f"{desc} {patient_name} {patient_id} {study_uid}".lower()
                 if "abdomen" in combined or "15076" in combined:
                     return {
                         "exists": True,

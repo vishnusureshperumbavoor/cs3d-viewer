@@ -1,10 +1,13 @@
 services:
   orthanc:
-    image: jodogne/orthanc-plugins
+    image: orthancteam/orthanc:26.8.1
     container_name: orthanc
     ports:
       - "8042:8042"
       - "4242:4242"
+    environment:
+      - ORTHANC_PASSWORD=orthanc
+      - DICOM_WEB_PLUGIN_ENABLED=true
     restart: unless-stopped
 
   backend:

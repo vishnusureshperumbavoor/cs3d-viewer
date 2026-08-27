@@ -45,7 +45,8 @@ export default function WorklistPage() {
         desc.includes("abdomen") ||
         pName.includes("abdomen") ||
         pId.includes("abdomen") ||
-        pId.includes("15076")
+        pId.includes("15076") ||
+        uid.includes("15076")
       ) {
         setSampleImported(true);
         if (uid && uid !== "-") {
@@ -112,7 +113,7 @@ export default function WorklistPage() {
       <main className="worklist-layout">
         <section className="panel-card worklist-results">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-            <h2 style={{ margin: 0 }}>Studies ({studies.length + (sampleImported ? 0 : 1)})</h2>
+            <h2 style={{ margin: 0 }}>Studies ({studies.length})</h2>
           </div>
           {error ? <p className="worklist-error">{error}</p> : null}
           <WorklistTable
