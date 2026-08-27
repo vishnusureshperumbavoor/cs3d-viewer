@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getRenderingEngine, RenderingEngine, Enums as CoreEnums } from "@cornerstonejs/core";
+import { getRenderingEngine, RenderingEngine, Enums as CoreEnums, metaData } from "@cornerstonejs/core";
 import {
   ToolGroupManager,
   Enums as ToolsEnums,
@@ -10,19 +10,183 @@ import {
 } from "@cornerstonejs/tools";
 import { initCornerstone } from "../services/cornerstone-service";
 import { medsamONNXService, PointPrompt } from "../services/medsam-onnx-service";
+import { DicomSegData } from "../services/dicom-seg-service";
 
 type UseCornerstoneViewportParams = {
   imageIds: string[];
   isAIActive?: boolean;
+  segData?: DicomSegData | null;
+  segmentVisibility?: Record<number, boolean>;
+  segmentOpacity?: number;
 };
 
-export function useCornerstoneViewport({ imageIds, isAIActive }: UseCornerstoneViewportParams) {
+export function useCornerstoneViewport({
+  imageIds,
+  isAIActive,
+  segData,
+  segmentVisibility,
+  segmentOpacity = 0.5,
+}: UseCornerstoneViewportParams) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const segDataRef = useRef<DicomSegData | null>(segData || null);
+  const segVisibilityRef = useRef<Record<number, boolean> | undefined>(segmentVisibility);
+  const segOpacityRef = useRef<number>(segmentOpacity);
+
   const [voiInfo, setVoiInfo] = useState<{ ww: number; wc: number } | null>(null);
   const [sliceInfo, setSliceInfo] = useState<{ current: number; total: number } | null>(null);
   const [isSegmenting, setIsSegmenting] = useState<boolean>(false);
   const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(null);
+
+  const renderingEngineId = "mainViewerRenderingEngine";
+  const viewportId = "CT_AXIAL_STACK";
+  const toolGroupId = "mainViewerToolGroup";
+
+  // Renders 2D segmentation mask overlay aligned with the current CT slice
+  const renderSegOverlay = () => {
+    const canvas = overlayCanvasRef.current;
+    if (!canvas) return;
+
+    const engine = getRenderingEngine(renderingEngineId);
+    if (!engine) return;
+    const viewport = engine.getViewport(viewportId) as any;
+    if (!viewport || !viewport.canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0 && (canvas.width !== Math.round(rect.width) || canvas.height !== Math.round(rect.height))) {
+      canvas.width = Math.round(rect.width);
+      canvas.height = Math.round(rect.height);
+    }
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const currentSegData = segDataRef.current;
+    if (!currentSegData || !currentSegData.sliceMaskMap) return;
+
+    const currentIndex = viewport.getCurrentImageIdIndex ? viewport.getCurrentImageIdIndex() : 0;
+    const currentImageId = imageIds[currentIndex];
+    if (!currentImageId) return;
+
+    const match = currentImageId.match(/instances\/([^/]+)/);
+    const sopInstanceUid = match ? match[1] : "";
+    if (!sopInstanceUid) return;
+
+    const sliceMasks = currentSegData.sliceMaskMap.get(sopInstanceUid);
+    if (!sliceMasks) return;
+
+    const imagePlane = metaData.get("imagePlaneModule", currentImageId);
+    if (!imagePlane) return;
+
+    const { imagePositionPatient, rowCosines, columnCosines, pixelSpacing, rows, columns } = imagePlane;
+    const [rowSpacing, colSpacing] = pixelSpacing || [1, 1];
+
+    // Compute top-left and bottom-right on canvas using indexToWorld or patient coords
+    const imageData = viewport.getImageData ? viewport.getImageData() : null;
+    let cTL: [number, number] | undefined;
+    let cBR: [number, number] | undefined;
+
+    if (imageData && typeof imageData.indexToWorld === "function") {
+      const pTL = imageData.indexToWorld([0, 0]);
+      const pBR = imageData.indexToWorld([columns, rows]);
+      cTL = viewport.worldToCanvas(pTL);
+      cBR = viewport.worldToCanvas(pBR);
+    } else {
+      const pTL = [
+        Number(imagePositionPatient[0]) || 0,
+        Number(imagePositionPatient[1]) || 0,
+        Number(imagePositionPatient[2]) || 0,
+      ];
+      const rCos = [
+        Number(rowCosines[0]) || 1,
+        Number(rowCosines[1]) || 0,
+        Number(rowCosines[2]) || 0,
+      ];
+      const cCos = [
+        Number(columnCosines[0]) || 0,
+        Number(columnCosines[1]) || 1,
+        Number(columnCosines[2]) || 0,
+      ];
+      const rSp = Number(rowSpacing) || 1;
+      const cSp = Number(colSpacing) || 1;
+      const pBR = [
+        pTL[0] + columns * cSp * rCos[0] + rows * rSp * cCos[0],
+        pTL[1] + columns * cSp * rCos[1] + rows * rSp * cCos[1],
+        pTL[2] + columns * cSp * rCos[2] + rows * rSp * cCos[2],
+      ];
+      cTL = viewport.worldToCanvas(pTL);
+      cBR = viewport.worldToCanvas(pBR);
+    }
+
+    if (!cTL || !cBR || !Number.isFinite(cTL[0]) || !Number.isFinite(cBR[0])) return;
+
+    const destX = Math.min(cTL[0], cBR[0]);
+    const destY = Math.min(cTL[1], cBR[1]);
+    const destW = Math.abs(cBR[0] - cTL[0]);
+    const destH = Math.abs(cBR[1] - cTL[1]);
+
+    if (destW <= 0 || destH <= 0) return;
+
+    // Reuse offscreen canvas for blitting mask
+    let offscreen = offscreenCanvasRef.current;
+    if (!offscreen) {
+      offscreen = document.createElement("canvas");
+      offscreenCanvasRef.current = offscreen;
+    }
+    if (offscreen.width !== columns || offscreen.height !== rows) {
+      offscreen.width = columns;
+      offscreen.height = rows;
+    }
+
+    const offCtx = offscreen.getContext("2d");
+    if (!offCtx) return;
+
+    const imgData = offCtx.createImageData(columns, rows);
+    const data = imgData.data;
+    const numPixels = columns * rows;
+    let hasAnyPixel = false;
+    const currentOpacity = segOpacityRef.current ?? 0.5;
+    const alphaByte = Math.round(currentOpacity * 255);
+    const currentVis = segVisibilityRef.current;
+
+    currentSegData.segments.forEach((seg) => {
+      const isVisible = currentVis ? currentVis[seg.segmentNumber] ?? true : true;
+      if (!isVisible) return;
+
+      const mask = sliceMasks[seg.segmentNumber];
+      if (!mask) return;
+
+      const [r, g, b] = seg.rgba;
+      for (let p = 0; p < numPixels; p++) {
+        if (mask[p] > 0) {
+          const idx = p * 4;
+          data[idx] = r;
+          data[idx + 1] = g;
+          data[idx + 2] = b;
+          data[idx + 3] = alphaByte;
+          hasAnyPixel = true;
+        }
+      }
+    });
+
+    if (hasAnyPixel) {
+      offCtx.putImageData(imgData, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(offscreen, destX, destY, destW, destH);
+    }
+  };
+
+  // Keep refs updated and re-render segmentation overlay
+  useEffect(() => {
+    segDataRef.current = segData || null;
+    segVisibilityRef.current = segmentVisibility;
+    segOpacityRef.current = segmentOpacity;
+    renderSegOverlay();
+  }, [segData, segmentVisibility, segmentOpacity]);
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -31,11 +195,8 @@ export function useCornerstoneViewport({ imageIds, isAIActive }: UseCornerstoneV
     let isCancelled = false;
     let renderingEngine: RenderingEngine | null = null;
 
-    const renderingEngineId = "mainViewerRenderingEngine";
-    const viewportId = "CT_AXIAL_STACK";
-    const toolGroupId = "mainViewerToolGroup";
-
     const updateVoiDisplay = () => {
+      renderSegOverlay();
       const engine = getRenderingEngine(renderingEngineId);
       if (!engine) return;
       const viewport = engine.getViewport(viewportId) as any;
@@ -131,7 +292,7 @@ export function useCornerstoneViewport({ imageIds, isAIActive }: UseCornerstoneV
       if (existingEngine) {
         try {
           existingEngine.destroy();
-        } catch (e) {}
+        } catch (e) { }
       }
 
       renderingEngine = new RenderingEngine(renderingEngineId);
@@ -202,14 +363,14 @@ export function useCornerstoneViewport({ imageIds, isAIActive }: UseCornerstoneV
       if (toolGroup) {
         try {
           ToolGroupManager.destroyToolGroup(toolGroupId);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       const engine = getRenderingEngine(renderingEngineId) || renderingEngine;
       if (engine) {
         try {
           engine.destroy();
-        } catch (e) {}
+        } catch (e) { }
       }
     };
   }, [imageIds, isAIActive]);

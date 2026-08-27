@@ -7,10 +7,12 @@ import {
   AIToolbar,
   ControlPanel,
   VtkViewer,
+  SegmentationPanel,
 } from "../components";
 import { WLPresetToolbar } from "../components/viewport/WLPresetToolbar";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
+import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
 
 export default function ViewerPage() {
   const { instances, error } = useStudyImages();
@@ -28,28 +30,69 @@ export default function ViewerPage() {
   }, [instances]);
 
   const seriesList = useMemo(() => {
-    return Array.from(seriesMap.entries()).map(([seriesUid, seriesInstances]) => {
-      const sortedInstances = [...seriesInstances].sort(
-        (a, b) => a.instanceNumber - b.instanceNumber
-      );
-      const middleIndex = Math.floor(sortedInstances.length / 2);
-      const thumbnailInstance = sortedInstances[middleIndex];
+    return Array.from(seriesMap.entries())
+      .map(([seriesUid, seriesInstances]) => {
+        const sortedInstances = [...seriesInstances].sort(
+          (a, b) => a.instanceNumber - b.instanceNumber
+        );
+        const middleIndex = Math.floor(sortedInstances.length / 2);
+        const thumbnailInstance = sortedInstances[middleIndex] || sortedInstances[0];
 
-      return {
-        seriesUid,
-        instances: sortedInstances,
-        thumbnailImageId: thumbnailInstance.imageId,
-        seriesDescription:
-          thumbnailInstance.seriesDescription ||
-          `Series ${thumbnailInstance.seriesNumber || ""}`,
-        modality: thumbnailInstance.modality || "OT",
-        instanceCount: sortedInstances.length,
-      };
-    });
+        return {
+          seriesUid,
+          instances: sortedInstances,
+          thumbnailImageId: thumbnailInstance.imageId,
+          seriesDescription:
+            thumbnailInstance.seriesDescription ||
+            `Series ${thumbnailInstance.seriesNumber || ""}`,
+          modality: thumbnailInstance.modality || "OT",
+          instanceCount: sortedInstances.length,
+        };
+      })
+      .filter((s) => s.modality !== "SEG"); // SEG files are loaded as overlays, not as 2D image stacks
   }, [seriesMap]);
 
   const [selectedSeriesUid, setSelectedSeriesUid] = useState<string | null>(null);
   const [isAIActive, setIsAIActive] = useState(false);
+
+  // Auto-detected DICOM SEG state
+  const segInstance = useMemo(() => dicomSegService.findSegInstance(instances), [instances]);
+  const [segData, setSegData] = useState<DicomSegData | null>(null);
+  const [isLoadingSeg, setIsLoadingSeg] = useState(false);
+  const [isSegPanelOpen, setIsSegPanelOpen] = useState(true);
+  const [segmentOpacity, setSegmentOpacity] = useState(0.5);
+  const [segVisibility, setSegVisibility] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    if (!segInstance) return;
+
+    let isCancelled = false;
+    setIsLoadingSeg(true);
+
+    dicomSegService
+      .loadStudySegmentation(segInstance)
+      .then((data) => {
+        if (!isCancelled) {
+          setSegData(data);
+          const initialVis: Record<number, boolean> = {};
+          data.segments.forEach((s) => {
+            initialVis[s.segmentNumber] = true;
+          });
+          setSegVisibility(initialVis);
+          setIsSegPanelOpen(true);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load study segmentation:", err);
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoadingSeg(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [segInstance]);
 
   // States for TotalSegmentator and 3D View
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
@@ -200,6 +243,17 @@ export default function ViewerPage() {
               <AIToolbar isAIActive={isAIActive} onToggleAI={setIsAIActive} />
             )}
 
+            {segData && (
+              <button
+                className={`seg-nav-toggle-btn ${isSegPanelOpen ? "active" : ""}`}
+                onClick={() => setIsSegPanelOpen((prev) => !prev)}
+                title={isSegPanelOpen ? "Close segmentation panel" : "View segmentation details"}
+              >
+                <span>🧬</span>
+                <span>Segmentation ({segData.segments.length})</span>
+              </button>
+            )}
+
             <button
               onClick={handleRunTotalSegmentator}
               disabled={isSegmentingTotal || !selectedSeriesUid}
@@ -225,7 +279,7 @@ export default function ViewerPage() {
         </div>
       </nav>
 
-      <main className="viewer-layout">
+      <main className={`viewer-layout ${isSegPanelOpen && segData ? "with-seg-panel" : ""}`}>
         {viewMode === "2d" ? (
           seriesList.length > 0 && (
             <aside className="viewer-sidebar">
@@ -340,6 +394,9 @@ export default function ViewerPage() {
                 <CornerstoneViewport
                   imageIds={activeImageIds}
                   isAIActive={isAIActive}
+                  segData={segData}
+                  segmentVisibility={segVisibility}
+                  segmentOpacity={segmentOpacity}
                 />
               )
             ) : (
@@ -351,6 +408,24 @@ export default function ViewerPage() {
             )}
           </div>
         </section>
+
+        {segData && (
+          <SegmentationPanel
+            isOpen={isSegPanelOpen}
+            onClose={() => setIsSegPanelOpen(false)}
+            segData={segData}
+            isLoading={isLoadingSeg}
+            segmentVisibility={segVisibility}
+            onToggleSegmentVisibility={(segNum) =>
+              setSegVisibility((prev) => ({
+                ...prev,
+                [segNum]: !(prev[segNum] ?? true),
+              }))
+            }
+            opacity={segmentOpacity}
+            onChangeOpacity={setSegmentOpacity}
+          />
+        )}
       </main>
     </div>
   );

@@ -13,6 +13,16 @@ export const initCornerstone = async (): Promise<void> => {
   try {
     // Initialize image loader, Cornerstone3D Core, and Tools
     await cornerstoneDICOMImageLoader.init();
+
+    // Configure image loader with Orthanc basic auth
+    cornerstoneDICOMImageLoader.internal.setOptions({
+      beforeSend: () => {
+        return {
+          Authorization: "Basic " + btoa("orthanc:orthanc"),
+        };
+      },
+    });
+
     await cornerstone3D.init();
     await cornerstone3DTools.init();
 

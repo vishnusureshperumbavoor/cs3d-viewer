@@ -44,16 +44,35 @@ function customMetadataProvider(type: string, imageId: string) {
   }
 
   if (type === "imagePlaneModule") {
-    const imagePositionPatient = instance["00200032"]?.Value ?? [0, 0, 0];
-    const imageOrientationPatient = instance["00200037"]?.Value ?? [1, 0, 0, 0, 1, 0];
-    const pixelSpacing = instance["00280030"]?.Value ?? [1, 1];
-    const rows = instance["00280010"]?.Value?.[0] ?? 512;
-    const columns = instance["00280011"]?.Value?.[0] ?? 512;
+    const rawPos = instance["00200032"]?.Value ?? [0, 0, 0];
+    const rawOrient = instance["00200037"]?.Value ?? [1, 0, 0, 0, 1, 0];
+    const rawSpacing = instance["00280030"]?.Value ?? [1, 1];
+
+    const imagePositionPatient = [
+      Number(rawPos[0]) || 0,
+      Number(rawPos[1]) || 0,
+      Number(rawPos[2]) || 0,
+    ];
+    const imageOrientationPatient = [
+      Number(rawOrient[0]) || 1,
+      Number(rawOrient[1]) || 0,
+      Number(rawOrient[2]) || 0,
+      Number(rawOrient[3]) || 0,
+      Number(rawOrient[4]) || 1,
+      Number(rawOrient[5]) || 0,
+    ];
+    const rowPixelSpacing = Number(rawSpacing[0]) || 1;
+    const columnPixelSpacing = Number(rawSpacing[1]) || 1;
+    const pixelSpacing = [rowPixelSpacing, columnPixelSpacing];
+    const rows = Number(instance["00280010"]?.Value?.[0] ?? 512);
+    const columns = Number(instance["00280011"]?.Value?.[0] ?? 512);
 
     return {
       imagePositionPatient,
       imageOrientationPatient,
       pixelSpacing,
+      rowPixelSpacing,
+      columnPixelSpacing,
       rows,
       columns,
       rowCosines: [imageOrientationPatient[0], imageOrientationPatient[1], imageOrientationPatient[2]],
@@ -152,6 +171,7 @@ export const fetchStudyInstances = async (
   const response = await fetch(url, {
     headers: {
       Accept: "application/dicom+json",
+      Authorization: "Basic " + btoa("orthanc:orthanc"),
     },
   });
 
