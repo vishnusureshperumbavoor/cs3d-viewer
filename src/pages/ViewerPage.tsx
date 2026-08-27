@@ -10,7 +10,7 @@ import {
   SegmentationPanel,
 } from "../components";
 import { WLPresetToolbar } from "../components/viewport/WLPresetToolbar";
-import { MPRViewer } from "../components/viewport/MPRViewer";
+import { MPRViewer, resetMPRCameras } from "../components/viewport/MPRViewer";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
 import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
@@ -104,6 +104,17 @@ export default function ViewerPage() {
 
   // States for TotalSegmentator and 3D View
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
+  const [active3DPreset, setActive3DPreset] = useState<string>("CT-AAA");
+  const [activeRightSidebarTab, setActiveRightSidebarTab] = useState<"segmentation" | "presets">("segmentation");
+
+  useEffect(() => {
+    if (viewMode === "3d") {
+      setActiveRightSidebarTab("presets");
+    } else {
+      setActiveRightSidebarTab("segmentation");
+    }
+  }, [viewMode]);
+
   const [isSegmentingTotal, setIsSegmentingTotal] = useState(false);
   const [totalSegError, setTotalSegError] = useState<string | null>(null);
   const [segLabelmaps, setSegLabelmaps] = useState<any[] | null>(null);
@@ -296,7 +307,7 @@ export default function ViewerPage() {
 
       <main
         className={`viewer-layout ${isLeftSidebarOpen ? "left-open" : "left-collapsed"} ${
-          segData
+          segData || viewMode === "3d"
             ? isSegPanelOpen
               ? "with-seg-panel"
               : "with-seg-collapsed"
@@ -516,12 +527,13 @@ export default function ViewerPage() {
               <MPRViewer
                 imageIds={activeImageIds}
                 seriesUid={selectedSeriesUid}
+                active3DPreset={active3DPreset}
               />
             )}
           </div>
         </section>
 
-        {segData && (
+        {(segData || viewMode === "3d") && (
           <SegmentationPanel
             isOpen={isSegPanelOpen}
             onToggle={() => setIsSegPanelOpen((prev) => !prev)}
@@ -536,6 +548,11 @@ export default function ViewerPage() {
             }
             opacity={segmentOpacity}
             onChangeOpacity={setSegmentOpacity}
+            activeTab={activeRightSidebarTab}
+            onChangeTab={setActiveRightSidebarTab}
+            active3DPreset={active3DPreset}
+            onSelect3DPreset={setActive3DPreset}
+            onResetCameras={resetMPRCameras}
           />
         )}
       </main>

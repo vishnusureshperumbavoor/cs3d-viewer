@@ -21,6 +21,7 @@ import { initCornerstone } from "../../services/cornerstone-service";
 interface MPRViewerProps {
   imageIds: string[];
   seriesUid: string | null;
+  active3DPreset?: string;
 }
 
 interface ViewportHUDState {
@@ -34,13 +35,6 @@ const RENDERING_ENGINE_ID = "MPR_RENDERING_ENGINE";
 const MPR_TOOLGROUP_ID = "MPR_TOOLGROUP";
 const VOLUME_3D_TOOLGROUP_ID = "VOLUME_3D_TOOLGROUP";
 
-const PRESETS_3D = [
-  { id: "CT-Bone", label: "Bone" },
-  { id: "CT-Chest-Vessels-Soft-Tissue", label: "Vessels" },
-  { id: "CT-Soft-Tissue", label: "Soft Tissue" },
-  { id: "CT-AAA", label: "Angio" },
-];
-
 const DEFAULT_WW = 650;
 const DEFAULT_WL = 1150;
 const DEFAULT_VOI_RANGE = {
@@ -48,7 +42,31 @@ const DEFAULT_VOI_RANGE = {
   upper: DEFAULT_WL + DEFAULT_WW / 2,
 };
 
-export function MPRViewer({ imageIds, seriesUid }: MPRViewerProps) {
+export function resetMPRCameras() {
+  try {
+    const engine = getRenderingEngine(RENDERING_ENGINE_ID);
+    if (engine) {
+      ["mpr-axial", "mpr-sagittal", "mpr-coronal", "mpr-3d"].forEach((id) => {
+        const vp = engine.getViewport(id) as any;
+        if (vp) {
+          vp.resetCamera();
+          if (id !== "mpr-3d" && typeof vp.setProperties === "function") {
+            vp.setProperties({ voiRange: DEFAULT_VOI_RANGE });
+          }
+          vp.render();
+        }
+      });
+    }
+  } catch (e) {
+    console.warn("Failed to reset cameras:", e);
+  }
+}
+
+export function MPRViewer({
+  imageIds,
+  seriesUid,
+  active3DPreset = "CT-AAA",
+}: MPRViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const axialRef = useRef<HTMLDivElement>(null);
   const sagittalRef = useRef<HTMLDivElement>(null);
@@ -57,7 +75,6 @@ export function MPRViewer({ imageIds, seriesUid }: MPRViewerProps) {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [active3DPreset, setActive3DPreset] = useState("CT-Bone");
   const [error, setError] = useState<string | null>(null);
 
   // HUD States for Axial, Sagittal, Coronal planes
@@ -82,41 +99,22 @@ export function MPRViewer({ imageIds, seriesUid }: MPRViewerProps) {
     wl: DEFAULT_WL,
   });
 
-  const handleSelect3DPreset = useCallback((presetId: string) => {
-    setActive3DPreset(presetId);
+  // Dynamically apply 3D preset whenever active3DPreset prop updates
+  useEffect(() => {
+    if (!active3DPreset) return;
     try {
       const engine = getRenderingEngine(RENDERING_ENGINE_ID);
       if (engine) {
         const vp3D = engine.getViewport("mpr-3d") as any;
         if (vp3D && typeof vp3D.setPreset === "function") {
-          vp3D.setPreset(presetId);
+          vp3D.setPreset(active3DPreset);
           vp3D.render();
         }
       }
     } catch (e) {
       console.warn("Failed to set 3D volume preset:", e);
     }
-  }, []);
-
-  const handleResetCameras = useCallback(() => {
-    try {
-      const engine = getRenderingEngine(RENDERING_ENGINE_ID);
-      if (engine) {
-        ["mpr-axial", "mpr-sagittal", "mpr-coronal", "mpr-3d"].forEach((id) => {
-          const vp = engine.getViewport(id) as any;
-          if (vp) {
-            vp.resetCamera();
-            if (id !== "mpr-3d" && typeof vp.setProperties === "function") {
-              vp.setProperties({ voiRange: DEFAULT_VOI_RANGE });
-            }
-            vp.render();
-          }
-        });
-      }
-    } catch (e) {
-      console.warn("Failed to reset cameras:", e);
-    }
-  }, []);
+  }, [active3DPreset]);
 
   useEffect(() => {
     if (!imageIds || imageIds.length === 0 || !seriesUid) {
@@ -152,7 +150,8 @@ export function MPRViewer({ imageIds, seriesUid }: MPRViewerProps) {
       let ww = DEFAULT_WW;
       let wl = DEFAULT_WL;
       try {
-        const props = typeof vp.getProperties === "function" ? vp.getProperties() : null;
+        const props =
+          typeof vp.getProperties === "function" ? vp.getProperties() : null;
         if (props?.voiRange) {
           ww = Math.round(props.voiRange.upper - props.voiRange.lower);
           wl = Math.round((props.voiRange.upper + props.voiRange.lower) / 2);
@@ -330,7 +329,7 @@ export function MPRViewer({ imageIds, seriesUid }: MPRViewerProps) {
           }
         });
 
-        // Apply default preset to 3D Viewport
+        // Apply active preset to 3D Viewport
         const vp3D = engine.getViewport("mpr-3d") as any;
         if (vp3D && typeof vp3D.setPreset === "function") {
           vp3D.setPreset(active3DPreset);
@@ -451,8 +450,12 @@ export function MPRViewer({ imageIds, seriesUid }: MPRViewerProps) {
         <div className="mpr-cell">
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">AXIAL</div>
-            <div className="mpr-hud-row">Slice: {axialHUD.sliceIndex}/{axialHUD.numSlices}</div>
-            <div className="mpr-hud-row">WW: {axialHUD.ww} WL: {axialHUD.wl}</div>
+            <div className="mpr-hud-row">
+              Slice: {axialHUD.sliceIndex}/{axialHUD.numSlices}
+            </div>
+            <div className="mpr-hud-row">
+              WW: {axialHUD.ww} WL: {axialHUD.wl}
+            </div>
           </div>
           <div ref={axialRef} className="mpr-viewport-canvas" />
         </div>
@@ -461,8 +464,12 @@ export function MPRViewer({ imageIds, seriesUid }: MPRViewerProps) {
         <div className="mpr-cell">
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">SAGITTAL</div>
-            <div className="mpr-hud-row">Slice: {sagittalHUD.sliceIndex}/{sagittalHUD.numSlices}</div>
-            <div className="mpr-hud-row">WW: {sagittalHUD.ww} WL: {sagittalHUD.wl}</div>
+            <div className="mpr-hud-row">
+              Slice: {sagittalHUD.sliceIndex}/{sagittalHUD.numSlices}
+            </div>
+            <div className="mpr-hud-row">
+              WW: {sagittalHUD.ww} WL: {sagittalHUD.wl}
+            </div>
           </div>
           <div ref={sagittalRef} className="mpr-viewport-canvas" />
         </div>
@@ -471,43 +478,20 @@ export function MPRViewer({ imageIds, seriesUid }: MPRViewerProps) {
         <div className="mpr-cell">
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">CORONAL</div>
-            <div className="mpr-hud-row">Slice: {coronalHUD.sliceIndex}/{coronalHUD.numSlices}</div>
-            <div className="mpr-hud-row">WW: {coronalHUD.ww} WL: {coronalHUD.wl}</div>
+            <div className="mpr-hud-row">
+              Slice: {coronalHUD.sliceIndex}/{coronalHUD.numSlices}
+            </div>
+            <div className="mpr-hud-row">
+              WW: {coronalHUD.ww} WL: {coronalHUD.wl}
+            </div>
           </div>
           <div ref={coronalRef} className="mpr-viewport-canvas" />
         </div>
 
-        {/* Quadrant 4: 3D VOLUME RENDERING */}
+        {/* Quadrant 4: 3D VOLUME RENDERING - Clean HUD only, buttons moved to right sidebar */}
         <div className="mpr-cell">
           <div className="mpr-hud-overlay">
-            <div className="mpr-hud-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span>3D VOLUME</span>
-              <div className="mpr-preset-pills" style={{ pointerEvents: "auto" }}>
-                {PRESETS_3D.map((p) => (
-                  <button
-                    key={p.id}
-                    className={`mpr-preset-pill ${active3DPreset === p.id ? "active" : ""}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelect3DPreset(p.id);
-                    }}
-                    title={`Apply ${p.label} volume preset`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-                <button
-                  className="mpr-preset-pill reset"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleResetCameras();
-                  }}
-                  title="Reset all cameras"
-                >
-                  Reset
-                </button>
-              </div>
-            </div>
+            <div className="mpr-hud-title">3D VOLUME</div>
           </div>
           <div ref={volume3dRef} className="mpr-viewport-canvas" />
         </div>
