@@ -44,7 +44,7 @@ export const datasetService = {
         }
       };
 
-      eventSource.onerror = (err) => {
+      eventSource.onerror = () => {
         eventSource.close();
         onProgress({
           stage: "error",

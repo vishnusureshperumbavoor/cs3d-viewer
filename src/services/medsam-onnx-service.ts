@@ -125,7 +125,7 @@ class MedSAMONNXService {
    * Run ONNX SAM 2 prompt decoder for point prompt(s)
    */
   async predictMask(
-    imageId: string,
+    _imageId: string,
     imageEmbedding: Float32Array,
     points: PointPrompt[],
     imageSize: [number, number] = [1024, 1024]

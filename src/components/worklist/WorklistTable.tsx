@@ -20,7 +20,7 @@ export default function WorklistTable({
   sampleStatus,
   onDownloadSample,
 }: WorklistTableProps) {
-  const { isImported, studyInstanceUid: sampleUid, progress } = sampleStatus;
+  const { isImported, progress } = sampleStatus;
   const isDownloading =
     progress.stage === "starting" ||
     progress.stage === "downloading" ||

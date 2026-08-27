@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CornerstoneViewport,
   SeriesThumbnail,
   Logo,
   PatientHeaderInfo,
   AIToolbar,
-  ControlPanel,
-  VtkViewer,
   SegmentationPanel,
 } from "../components";
 import { WLPresetToolbar } from "../components/viewport/WLPresetToolbar";
@@ -117,10 +115,8 @@ export default function ViewerPage() {
 
   const [isSegmentingTotal, setIsSegmentingTotal] = useState(false);
   const [totalSegError, setTotalSegError] = useState<string | null>(null);
-  const [segLabelmaps, setSegLabelmaps] = useState<any[] | null>(null);
-  const [segStructures, setSegStructures] = useState<any[] | null>(null);
-  const [segmentVisibility, setSegmentVisibility] = useState<Record<number, boolean>>({});
-  const vtkViewerRef = useRef<any>(null);
+  const [_segLabelmaps, setSegLabelmaps] = useState<any[] | null>(null);
+  const [_segStructures, setSegStructures] = useState<any[] | null>(null);
 
   // Set default selected series once seriesList is loaded (pick first non-SEG image series)
   useEffect(() => {
@@ -151,36 +147,6 @@ export default function ViewerPage() {
     };
   }, [instances]);
 
-  const handleToggleSegmentVisibility = (segNum: number) => {
-    setSegmentVisibility((prev) => ({
-      ...prev,
-      [segNum]: prev[segNum] === false ? true : false,
-    }));
-  };
-
-  const handleExportSTL = (segNum: number) => {
-    if (vtkViewerRef.current && typeof vtkViewerRef.current.exportSTL === "function") {
-      vtkViewerRef.current.exportSTL(segNum);
-    }
-  };
-
-  const handleSegUpload = async (file: File | null) => {
-    if (!file) return;
-    setIsSegmentingTotal(true);
-    setTotalSegError(null);
-    try {
-      const result = await totalsegmentatorService.parseFile(file);
-      setSegLabelmaps(result.parsedLabelmaps);
-      setSegStructures(result.segStructures);
-      setSegmentVisibility(result.segmentVisibility);
-      setViewMode("3d");
-    } catch (err: any) {
-      setTotalSegError(err.message || "Failed to parse manual DICOM SEG.");
-    } finally {
-      setIsSegmentingTotal(false);
-    }
-  };
-
   const handleRunTotalSegmentator = async () => {
     if (!selectedSeriesUid) return;
     setIsSegmentingTotal(true);
@@ -192,7 +158,7 @@ export default function ViewerPage() {
       );
       setSegLabelmaps(result.parsedLabelmaps);
       setSegStructures(result.segStructures);
-      setSegmentVisibility(result.segmentVisibility);
+      setSegVisibility(result.segmentVisibility);
       setViewMode("3d");
     } catch (err: any) {
       console.error(err);
