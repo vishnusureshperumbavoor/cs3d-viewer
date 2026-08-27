@@ -33,23 +33,32 @@ A high-performance, web-based 3D viewer for DICOM Segmentation (SEG) files. This
 
 ### Running Locally
 
-This application can run in a hybrid developer mode: the **Orthanc DICOM Server** and the **FastAPI/TotalSegmentator AI Backend** run together in a Docker Compose stack, while the **React Frontend** runs locally on the host machine for optimal hot-reloading speed.
+To run the application, ensure all three components (Orthanc DICOM Server, FastAPI AI Backend, and React Frontend) are started:
 
-1. **Start the Dockerized services (Orthanc & FastAPI Backend):**
+1. **Start the Orthanc DICOM Server:**
    ```bash
-   docker compose up --build
+   docker compose up -d orthanc
    ```
-   *Note: On the first boot, TotalSegmentator downloads AI segmentation models dynamically. A host volume mount is configured at `~/.totalsegmentator` as a model cache directory to bypass redownloads during subsequent boots.*
 
-2. **Start the development React frontend:**
+2. **Start the FastAPI AI Backend:**
+   - First-time setup:
+     ```bash
+     npm run start:server -- --install
+     ```
+   - Subsequent runs:
+     ```bash
+     npm run start:server
+     ```
+
+3. **Start the React Frontend:**
    ```bash
    npm install
    npm start
    ```
 
-3. **Explore the interface:**
+4. **Explore the interface:**
    Open [http://localhost:3000](http://localhost:3000) in your browser.
-   To run automated segmentations, load a series and click the **Run TotalSegmentator** button in the top menu. The containerized backend will perform deep learning inference and output the DICOM SEG files back into Orthanc.
+   To run automated segmentations, load a series and click the **🧠 TotalSegmentator** button in the top menu. The backend will perform deep learning inference and output the DICOM SEG files directly into Orthanc and the 3D viewer.
 
 
 ### 📤 Uploading Data to Orthanc

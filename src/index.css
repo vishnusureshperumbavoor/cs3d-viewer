@@ -378,7 +378,7 @@ body {
   padding: 20px;
   min-height: calc(100vh - 68px);
   display: grid;
-  grid-template-columns: minmax(300px, 300px) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 20px;
 }
 
