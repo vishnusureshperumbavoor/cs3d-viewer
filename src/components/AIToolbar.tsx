@@ -34,25 +34,27 @@ export default function AIToolbar({ isAIActive, onToggleAI }: AIToolbarProps) {
         onClick={handleToggle}
         className={`ai-segment-btn ${isAIActive ? "active" : ""}`}
         style={{
-          padding: "6px 14px",
-          borderRadius: "6px",
-          background: isAIActive ? "linear-gradient(135deg, #6366f1, #a855f7)" : "#1e293b",
+          height: "42px",
+          boxSizing: "border-box",
+          padding: "0 14px",
+          borderRadius: "8px",
+          background: isAIActive ? "rgba(255, 255, 255, 0.16)" : "rgba(20, 20, 20, 0.7)",
           color: "#ffffff",
-          border: isAIActive ? "1px solid #c084fc" : "1px solid #334155",
+          border: isAIActive ? "1px solid rgba(255, 255, 255, 0.35)" : "1px solid var(--border)",
           fontWeight: 600,
+          fontSize: "0.83rem",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           gap: "6px",
           transition: "all 0.2s ease",
-          boxShadow: isAIActive ? "0 0 12px rgba(168, 85, 247, 0.4)" : "none",
         }}
       >
         <span>⚡ MedSAM AI</span>
         {modelStatus === "loading" && <span className="loading-spinner small" />}
       </button>
       {isAIActive && (
-        <span style={{ fontSize: "0.8rem", color: "#a7f3d0", background: "rgba(16, 185, 129, 0.15)", padding: "2px 8px", borderRadius: "10px", border: "1px solid rgba(16, 185, 129, 0.3)" }}>
+        <span style={{ fontSize: "0.8rem", color: "#f1f5f9", background: "rgba(255, 255, 255, 0.1)", padding: "2px 8px", borderRadius: "10px", border: "1px solid rgba(255, 255, 255, 0.2)" }}>
           Click target on slice
         </span>
       )}

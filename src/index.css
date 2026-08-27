@@ -10,8 +10,8 @@
   --text: #ececec;
   --muted: #a1a1a1;
   --title: #ffffff;
-  --accent: #5b5bff;
-  --accent-soft: rgba(91, 91, 255, 0.14);
+  --accent: #2e2e2e;
+  --accent-soft: rgba(255, 255, 255, 0.08);
   --ok: #22c55e;
   --ok-soft: rgba(34, 197, 94, 0.14);
 }
@@ -63,22 +63,36 @@ body {
   gap: 10px;
   text-decoration: none;
   cursor: pointer;
+  margin: 0;
+  padding: 0;
 }
 
 .brand-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3a3ab8, #5050e9);
-  box-shadow: 0 10px 24px rgba(64, 64, 196, 0.32);
-  display: grid;
-  place-items: center;
+  width: 68px;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: rgba(20, 20, 20, 0.7);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  transition: all 0.2s ease;
+}
+
+.brand-icon:hover {
+  background: rgba(35, 35, 35, 0.9);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .brand-icon svg {
-  width: 18px;
-  height: 18px;
-  color: #fff;
+  width: 48px;
+  height: 24px;
+  display: block;
+  color: #ffffff;
 }
 
 .top-nav-brand h1 {
@@ -106,9 +120,9 @@ body {
 }
 
 .status-pill.loading {
-  color: #8f8fff;
+  color: #e2e8f0;
   background: var(--accent-soft);
-  border-color: rgba(91, 91, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .status-dot {
@@ -180,9 +194,9 @@ body {
 }
 
 .upload-zone:hover:not(:disabled) {
-  border-color: rgba(91, 91, 255, 0.6);
-  background: rgba(91, 91, 255, 0.08);
-  color: #b9b9ff;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
 }
 
 .upload-zone:disabled {
@@ -405,8 +419,8 @@ body {
 }
 
 .worklist-form input:focus {
-  outline: 1px solid rgba(91, 91, 255, 0.5);
-  border-color: rgba(91, 91, 255, 0.6);
+  outline: 1px solid rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .worklist-btn {
@@ -624,13 +638,13 @@ body {
 
 .series-card:hover {
   background: rgba(30, 30, 30, 0.8);
-  border-color: rgba(91, 91, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .series-card.active {
-  background: rgba(91, 91, 255, 0.08);
-  border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(91, 91, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
 }
 
 /* DICOM SEG Series Card & Thumbnail Styles */
@@ -713,10 +727,11 @@ body {
 
 .series-modality {
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
-  color: #fff;
-  background: var(--accent);
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   padding: 2px 6px;
   border-radius: 4px;
   align-self: flex-start;
@@ -765,8 +780,10 @@ body {
   gap: 16px;
   background: rgba(20, 20, 20, 0.7);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 6px 16px;
+  border-radius: 8px;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 16px;
   max-width: 700px;
   margin: 0 16px;
 }
@@ -992,9 +1009,9 @@ body {
 }
 
 .seg-tab-btn.active {
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.12);
-  border-color: rgba(56, 189, 248, 0.3);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .seg-header-icon {
@@ -1017,13 +1034,13 @@ body {
 }
 
 .seg-collapsed-icon-btn.active {
-  color: #38bdf8;
+  color: #ffffff;
   transform: scale(1.15);
 }
 
 .seg-collapsed-icon-btn:hover,
 .sidebar-collapsed-icon-btn:hover {
-  color: #38bdf8;
+  color: #ffffff;
   transform: scale(1.15);
 }
 
@@ -1099,7 +1116,7 @@ body {
 
 .seg-opacity-val {
   font-size: 0.78rem;
-  color: #34d399;
+  color: #f1f5f9;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -1110,7 +1127,7 @@ body {
   width: 100%;
   height: 5px;
   border-radius: 3px;
-  background: #334155;
+  background: #333333;
   outline: none;
   cursor: pointer;
 }
@@ -1118,13 +1135,13 @@ body {
 .seg-opacity-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #34d399;
+  background: #e2e8f0;
   cursor: pointer;
-  border: 2px solid #0f172a;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+  border: 2px solid #18181b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   transition: transform 0.1s ease;
 }
 
@@ -1143,12 +1160,12 @@ body {
 
 .seg-action-icon-btn:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: #38bdf8 !important;
+  color: #ffffff !important;
   transform: scale(1.1);
 }
 
 .seg-action-link:hover {
-  color: #38bdf8;
+  color: #ffffff;
 }
 
 .seg-list {
@@ -1276,9 +1293,9 @@ body {
 }
 
 .seg-preset-card.active {
-  background: rgba(56, 189, 248, 0.1);
-  border-color: #38bdf8;
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 .seg-preset-card-header {
@@ -1294,15 +1311,15 @@ body {
 }
 
 .seg-preset-card.active .seg-preset-name {
-  color: #38bdf8;
+  color: #ffffff;
 }
 
 .seg-preset-active-badge {
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.2);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
   padding: 1px 6px;
   border-radius: 4px;
   letter-spacing: 0.05em;
@@ -1436,13 +1453,14 @@ body {
 }
 
 .mpr-preset-pill.reset {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .mpr-preset-pill.reset:hover {
-  background: rgba(56, 189, 248, 0.25);
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 }
 
 /* Loading & Error Overlays */
@@ -1487,13 +1505,14 @@ body {
   width: 220px;
   height: 6px;
   border-radius: 3px;
-  background: #1e293b;
+  background: #262626;
   overflow: hidden;
 }
 
 .mpr-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  background: #e2e8f0;
+  border-radius: 3px;
   transition: width 0.3s ease;
 }
 

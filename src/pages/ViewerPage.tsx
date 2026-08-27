@@ -225,18 +225,29 @@ export default function ViewerPage() {
           <WLPresetToolbar />
 
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <div style={{ display: "flex", gap: "4px", background: "#0f172a", padding: "3px", borderRadius: "8px", border: "1px solid #1e293b" }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              height: "42px",
+              boxSizing: "border-box",
+              background: "rgba(20, 20, 20, 0.7)",
+              padding: "4px",
+              borderRadius: "8px",
+              border: "1px solid var(--border)"
+            }}>
               <button
                 onClick={() => setViewMode("2d")}
                 className={`tab-btn-2d ${viewMode === "2d" ? "active" : ""}`}
                 title="2D Slice View"
                 aria-label="2D View"
                 style={{
-                  padding: "6px 10px",
+                  height: "32px",
+                  padding: "0 10px",
                   borderRadius: "6px",
-                  background: viewMode === "2d" ? "var(--accent)" : "transparent",
-                  color: "#ffffff",
-                  border: "none",
+                  background: viewMode === "2d" ? "rgba(255, 255, 255, 0.16)" : "transparent",
+                  color: viewMode === "2d" ? "#ffffff" : "#94a3b8",
+                  border: viewMode === "2d" ? "1px solid rgba(255, 255, 255, 0.2)" : "1px solid transparent",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -256,11 +267,12 @@ export default function ViewerPage() {
                 title="3D Volume View"
                 aria-label="3D View"
                 style={{
-                  padding: "6px 10px",
+                  height: "32px",
+                  padding: "0 10px",
                   borderRadius: "6px",
-                  background: viewMode === "3d" ? "var(--accent)" : "transparent",
-                  color: "#ffffff",
-                  border: "none",
+                  background: viewMode === "3d" ? "rgba(255, 255, 255, 0.16)" : "transparent",
+                  color: viewMode === "3d" ? "#ffffff" : "#94a3b8",
+                  border: viewMode === "3d" ? "1px solid rgba(255, 255, 255, 0.2)" : "1px solid transparent",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -276,26 +288,50 @@ export default function ViewerPage() {
               </button>
             </div>
 
-            {viewMode === "2d" && (
-              <AIToolbar isAIActive={isAIActive} onToggleAI={setIsAIActive} />
-            )}
+            <AIToolbar
+              isAIActive={isAIActive}
+              onToggleAI={(active) => {
+                if (active && viewMode !== "2d") {
+                  setViewMode("2d");
+                }
+                setIsAIActive(active);
+              }}
+            />
 
             <button
               onClick={handleRunTotalSegmentator}
               disabled={isSegmentingTotal || !selectedSeriesUid}
               style={{
-                padding: "6px 14px",
-                borderRadius: "6px",
-                background: isSegmentingTotal ? "#334155" : "linear-gradient(135deg, #1e3a8a, #3b82f6)",
-                color: "#ffffff",
-                border: "none",
+                height: "42px",
+                boxSizing: "border-box",
+                padding: "0 16px",
+                borderRadius: "8px",
+                background: isSegmentingTotal
+                  ? "rgba(30, 30, 30, 0.5)"
+                  : "rgba(20, 20, 20, 0.7)",
+                color: isSegmentingTotal ? "#64748b" : "#f1f5f9",
+                border: isSegmentingTotal
+                  ? "1px solid rgba(255, 255, 255, 0.08)"
+                  : "1px solid var(--border)",
                 fontWeight: 600,
-                fontSize: "0.85rem",
+                fontSize: "0.83rem",
                 cursor: isSegmentingTotal ? "not-allowed" : "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
                 transition: "all 0.2s ease"
+              }}
+              onMouseEnter={(e) => {
+                if (!isSegmentingTotal && selectedSeriesUid) {
+                  e.currentTarget.style.background = "rgba(40, 40, 40, 0.95)";
+                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.35)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSegmentingTotal && selectedSeriesUid) {
+                  e.currentTarget.style.background = "rgba(20, 20, 20, 0.7)";
+                  e.currentTarget.style.borderColor = "var(--border)";
+                }
               }}
             >
               <span>🧠 TotalSegmentator</span>

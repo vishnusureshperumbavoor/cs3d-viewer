@@ -5,26 +5,23 @@ interface LogoProps extends React.SVGProps<SVGSVGElement> {}
 export default function Logo(props: LogoProps) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 48 24"
       fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
       <text
-        x="12"
-        y="15.5"
-        fontFamily="sans-serif"
-        fontSize="13.5"
-        fontWeight="900"
-        fill="currentColor"
-        stroke="none"
+        x="24"
+        y="12"
+        fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        fontSize="15"
+        fontWeight="800"
+        fill="#ffffff"
+        letterSpacing="0.06em"
         textAnchor="middle"
-        letterSpacing="-0.02em"
+        dominantBaseline="central"
       >
-        VSP
+        VMI
       </text>
     </svg>
   );

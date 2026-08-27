@@ -101,7 +101,7 @@ export default function WorklistPage() {
             <div className="brand-icon" aria-hidden="true">
               <Logo />
             </div>
-            <h1>VSP Worklist</h1>
+            <h1>VMI Worklist</h1>
           </a>
           <div className={`status-pill ${loading ? "loading" : "ready"}`}>
             <span className="status-dot" />
