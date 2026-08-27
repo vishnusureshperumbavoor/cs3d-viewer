@@ -31,6 +31,7 @@ export const initCornerstone = async (): Promise<void> => {
     cornerstone3DTools.addTool(cornerstone3DTools.PanTool);
     cornerstone3DTools.addTool(cornerstone3DTools.WindowLevelTool);
     cornerstone3DTools.addTool(cornerstone3DTools.StackScrollTool);
+    cornerstone3DTools.addTool(cornerstone3DTools.TrackballRotateTool);
   } catch (err) {
     console.warn("Cornerstone init warning:", err);
   }

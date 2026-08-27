@@ -10,6 +10,7 @@ import {
   SegmentationPanel,
 } from "../components";
 import { WLPresetToolbar } from "../components/viewport/WLPresetToolbar";
+import { MPRViewer } from "../components/viewport/MPRViewer";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
 import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
@@ -295,11 +296,14 @@ export default function ViewerPage() {
 
       <main
         className={`viewer-layout ${isLeftSidebarOpen ? "left-open" : "left-collapsed"} ${
-          segData ? (isSegPanelOpen ? "with-seg-panel" : "with-seg-collapsed") : ""
+          viewMode === "2d" && segData
+            ? isSegPanelOpen
+              ? "with-seg-panel"
+              : "with-seg-collapsed"
+            : ""
         }`}
       >
-        {viewMode === "2d" ? (
-          seriesList.length > 0 &&
+        {seriesList.length > 0 &&
           (isLeftSidebarOpen ? (
             <aside className="viewer-sidebar expanded">
               <div
@@ -423,17 +427,7 @@ export default function ViewerPage() {
                 </svg>
               </button>
             </aside>
-          ))
-        ) : (
-          <ControlPanel
-            onSegUpload={handleSegUpload}
-            isLoading={isSegmentingTotal}
-            segStructures={segStructures}
-            segmentVisibility={segmentVisibility}
-            onToggleSegmentVisibility={handleToggleSegmentVisibility}
-            onExportSTL={handleExportSTL}
-          />
-        )}
+          ))}
 
         <section className="viewer-panel" style={{ position: "relative" }}>
           {isSegmentingTotal && (
@@ -519,16 +513,15 @@ export default function ViewerPage() {
                 />
               )
             ) : (
-              <VtkViewer
-                ref={vtkViewerRef}
-                segLabelmaps={segLabelmaps}
-                segmentVisibility={segmentVisibility}
+              <MPRViewer
+                imageIds={activeImageIds}
+                seriesUid={selectedSeriesUid}
               />
             )}
           </div>
         </section>
 
-        {segData && (
+        {viewMode === "2d" && segData && (
           <SegmentationPanel
             isOpen={isSegPanelOpen}
             onToggle={() => setIsSegPanelOpen((prev) => !prev)}
