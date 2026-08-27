@@ -5,7 +5,6 @@ import {
   SeriesThumbnail,
   Logo,
   PatientHeaderInfo,
-  AIToolbar,
   SegmentationPanel,
 } from "../components";
 import { WLPresetToolbar } from "../components/viewport/WLPresetToolbar";
@@ -14,6 +13,7 @@ import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS } from "../utils/mpr-utils";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
 import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
+import { medsamONNXService } from "../services/medsam-onnx-service";
 
 export default function ViewerPage() {
   const { instances, error, refetch } = useStudyImages();
@@ -148,7 +148,8 @@ export default function ViewerPage() {
     });
   }, [viewMode]);
 
-  const [isSegmentingTotal, setIsSegmentingTotal] = useState(false);
+  const [segmentingSeriesUid, setSegmentingSeriesUid] = useState<string | null>(null);
+  const [loadingMedsamSeriesUid, setLoadingMedsamSeriesUid] = useState<string | null>(null);
   const [totalSegError, setTotalSegError] = useState<string | null>(null);
 
   // Set default selected series once seriesList is loaded (pick first non-SEG image series)
@@ -180,21 +181,44 @@ export default function ViewerPage() {
     };
   }, [instances]);
 
-  const handleRunTotalSegmentator = async () => {
-    if (!selectedSeriesUid) return;
-    setIsSegmentingTotal(true);
+  const handleToggleMedSAM = async (seriesUid: string) => {
+    if (selectedSeriesUid !== seriesUid) {
+      setSelectedSeriesUid(seriesUid);
+    }
+    if (viewMode !== "2d") {
+      setViewMode("2d");
+    }
+
+    if (!isAIActive || selectedSeriesUid !== seriesUid) {
+      setLoadingMedsamSeriesUid(seriesUid);
+      try {
+        const ok = await medsamONNXService.init();
+        if (ok) {
+          setIsAIActive(true);
+        }
+      } finally {
+        setLoadingMedsamSeriesUid(null);
+      }
+    } else {
+      setIsAIActive(false);
+    }
+  };
+
+  const handleRunTotalSegmentator = async (seriesUid: string) => {
+    if (!seriesUid || segmentingSeriesUid) return;
+    setSegmentingSeriesUid(seriesUid);
     setTotalSegError(null);
     try {
       await totalsegmentatorService.run(
         patientDetails?.studyInstanceUid || "",
-        selectedSeriesUid
+        seriesUid
       );
       await refetch();
     } catch (err: any) {
       console.error("TotalSegmentator run failed:", err);
       setTotalSegError(err.message || "An unexpected error occurred during TotalSegmentator execution.");
     } finally {
-      setIsSegmentingTotal(false);
+      setSegmentingSeriesUid(null);
     }
   };
 
@@ -283,66 +307,16 @@ export default function ViewerPage() {
                 </svg>
               </button>
             </div>
-
-            <AIToolbar
-              isAIActive={isAIActive}
-              onToggleAI={(active) => {
-                if (active && viewMode !== "2d") {
-                  setViewMode("2d");
-                }
-                setIsAIActive(active);
-              }}
-            />
-
-            <button
-              onClick={handleRunTotalSegmentator}
-              disabled={isSegmentingTotal || !selectedSeriesUid}
-              style={{
-                height: "42px",
-                boxSizing: "border-box",
-                padding: "0 16px",
-                borderRadius: "8px",
-                background: isSegmentingTotal
-                  ? "rgba(30, 30, 30, 0.5)"
-                  : "rgba(20, 20, 20, 0.7)",
-                color: isSegmentingTotal ? "#64748b" : "#f1f5f9",
-                border: isSegmentingTotal
-                  ? "1px solid rgba(255, 255, 255, 0.08)"
-                  : "1px solid var(--border)",
-                fontWeight: 600,
-                fontSize: "0.83rem",
-                cursor: isSegmentingTotal ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                transition: "all 0.2s ease"
-              }}
-              onMouseEnter={(e) => {
-                if (!isSegmentingTotal && selectedSeriesUid) {
-                  e.currentTarget.style.background = "rgba(40, 40, 40, 0.95)";
-                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.35)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isSegmentingTotal && selectedSeriesUid) {
-                  e.currentTarget.style.background = "rgba(20, 20, 20, 0.7)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }
-              }}
-            >
-              <span>🧠 TotalSegmentator</span>
-              {isSegmentingTotal && <span className="loading-spinner small" />}
-            </button>
           </div>
         </div>
       </nav>
 
       <main
         className={`viewer-layout ${isLeftSidebarOpen ? "left-open" : "left-collapsed"} ${segData || viewMode === "3d"
-            ? isSegPanelOpen
-              ? "with-seg-panel"
-              : "with-seg-collapsed"
-            : ""
+          ? isSegPanelOpen
+            ? "with-seg-panel"
+            : "with-seg-collapsed"
+          : ""
           }`}
       >
         {seriesList.length > 0 &&
@@ -383,57 +357,106 @@ export default function ViewerPage() {
 
               <div className="series-list">
                 {seriesList
-                  .filter((series) => {
-                    if (series.modality === "SEG") {
-                      return Boolean(segDataMap[series.seriesUid]);
-                    }
-                    return true;
-                  })
-                  .map((series) => {
-                    const isSegSeries = series.modality === "SEG";
-                    const isSelected = isSegSeries
-                      ? activeSegSeriesUid === series.seriesUid
-                      : selectedSeriesUid === series.seriesUid;
-                    const parsedSeg = segDataMap[series.seriesUid];
+                  .filter((s) => s.modality !== "SEG")
+                  .map((imageSeries) => {
+                    const isSelected = selectedSeriesUid === imageSeries.seriesUid;
+                    const loadedSegs = seriesList.filter(
+                      (s) => s.modality === "SEG" && Boolean(segDataMap[s.seriesUid])
+                    );
 
                     return (
-                      <button
-                        key={series.seriesUid}
-                        className={`series-card ${isSegSeries ? "seg-series-card" : ""} ${isSelected ? "active" : ""
-                          }`}
-                        onClick={() => {
-                          if (isSegSeries) {
-                            setActiveSegSeriesUid(series.seriesUid);
-                          } else {
-                            setSelectedSeriesUid(series.seriesUid);
-                          }
-                        }}
-                        title={series.seriesDescription}
-                      >
-                        {isSegSeries ? (
-                          <div className="series-thumbnail-container seg-thumb-container">
-                            <span style={{ fontSize: "1.85rem" }} role="img" aria-label="Segmentation">
-                              🧬
+                      <div key={imageSeries.seriesUid} className="series-group-card">
+                        {/* Base Image Series Card */}
+                        <button
+                          className={`series-card ${isSelected ? "active" : ""}`}
+                          onClick={() => {
+                            setSelectedSeriesUid(imageSeries.seriesUid);
+                          }}
+                          title={imageSeries.seriesDescription}
+                        >
+                          <SeriesThumbnail imageId={imageSeries.thumbnailImageId} />
+                          <div className="series-info">
+                            <span className="series-modality">
+                              {imageSeries.modality}
+                            </span>
+                            <span className="series-desc" title={imageSeries.seriesDescription}>
+                              {imageSeries.seriesDescription}
+                            </span>
+                            <span className="series-count">
+                              {imageSeries.instanceCount} images
                             </span>
                           </div>
-                        ) : (
-                          <SeriesThumbnail imageId={series.thumbnailImageId} />
-                        )}
+                        </button>
 
-                        <div className="series-info">
-                          <span className={`series-modality ${isSegSeries ? "seg-modality-badge" : ""}`}>
-                            {series.modality}
-                          </span>
-                          <span className="series-desc" title={series.seriesDescription}>
-                            {isSegSeries ? series.seriesDescription || "Segmentation" : series.seriesDescription}
-                          </span>
-                          <span className="series-count">
-                            {isSegSeries
-                              ? `${parsedSeg?.segments.length} Segments`
-                              : `${series.instanceCount} images`}
-                          </span>
+                        {/* Series-Level AI Actions Row */}
+                        <div className="series-ai-actions-row">
+                          <button
+                            className={`series-ai-btn ${isAIActive && isSelected ? "active" : ""}`}
+                            disabled={loadingMedsamSeriesUid === imageSeries.seriesUid}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleToggleMedSAM(imageSeries.seriesUid);
+                            }}
+                            title="Interactive 2D MedSAM AI Segmentation on this series"
+                          >
+                            <span>⚡ MedSAM</span>
+                            {loadingMedsamSeriesUid === imageSeries.seriesUid && (
+                              <span className="loading-spinner small" />
+                            )}
+                          </button>
+
+                          <button
+                            className="series-ai-btn"
+                            disabled={segmentingSeriesUid === imageSeries.seriesUid}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSeriesUid(imageSeries.seriesUid);
+                              void handleRunTotalSegmentator(imageSeries.seriesUid);
+                            }}
+                            title="Run 3D TotalSegmentator AI on this series"
+                          >
+                            <span>🧠 TotalSeg</span>
+                            {segmentingSeriesUid === imageSeries.seriesUid && (
+                              <span className="loading-spinner small" />
+                            )}
+                          </button>
                         </div>
-                      </button>
+
+                        {/* Associated Segmentation Cards */}
+                        {loadedSegs.map((segSeries) => {
+                          const isSegSelected = activeSegSeriesUid === segSeries.seriesUid;
+                          const parsedSeg = segDataMap[segSeries.seriesUid];
+
+                          return (
+                            <button
+                              key={segSeries.seriesUid}
+                              className={`series-card seg-series-card ${isSegSelected ? "active" : ""}`}
+                              onClick={() => {
+                                setSelectedSeriesUid(imageSeries.seriesUid);
+                                setActiveSegSeriesUid(segSeries.seriesUid);
+                              }}
+                              title={segSeries.seriesDescription}
+                            >
+                              <div className="series-thumbnail-container seg-thumb-container">
+                                <span style={{ fontSize: "1.85rem" }} role="img" aria-label="Segmentation">
+                                  🧬
+                                </span>
+                              </div>
+                              <div className="series-info">
+                                <span className="series-modality seg-modality-badge">
+                                  {segSeries.modality}
+                                </span>
+                                <span className="series-desc" title={segSeries.seriesDescription}>
+                                  {segSeries.seriesDescription || "Segmentation"}
+                                </span>
+                                <span className="series-count">
+                                  {parsedSeg?.segments.length} Segments
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     );
                   })}
               </div>
@@ -485,7 +508,7 @@ export default function ViewerPage() {
           ))}
 
         <section className="viewer-panel" style={{ position: "relative" }}>
-          {isSegmentingTotal && (
+          {segmentingSeriesUid && (
             <div style={{
               position: "absolute",
               inset: 0,
