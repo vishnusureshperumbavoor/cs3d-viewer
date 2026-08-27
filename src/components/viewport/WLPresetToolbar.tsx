@@ -157,62 +157,16 @@ export function WLPresetToolbar() {
         </svg>
       </button>
 
-      {/* Dropdown Menu - only visible when clicking dropdown icon */}
+      {/* Dropdown Menu */}
       {isDropdownOpen && (
-        <div
-          className="wl-presets-menu"
-          style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            minWidth: "240px",
-            background: "rgba(20, 20, 20, 0.95)",
-            backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255, 255, 255, 0.16)",
-            borderRadius: "8px",
-            padding: "4px",
-            boxShadow: "0 10px 30px rgba(0, 0, 0, 0.7)",
-            zIndex: 1000,
-            display: "flex",
-            flexDirection: "column",
-            gap: "2px",
-          }}
-        >
+        <div className="wl-presets-menu">
           {STANDARD_WL_PRESETS.map((preset) => {
             const isSelected = selectedPresetId === preset.id;
             return (
               <button
                 key={preset.id}
                 onClick={() => handleSelectPreset(preset.id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "7px 10px",
-                  borderRadius: "6px",
-                  border: "none",
-                  background: isSelected
-                    ? "rgba(255, 255, 255, 0.12)"
-                    : "transparent",
-                  color: isSelected ? "#ffffff" : "#cbd5e1",
-                  fontSize: "0.82rem",
-                  fontWeight: isSelected ? 600 : 400,
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "background 0.15s ease, color 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.07)";
-                    e.currentTarget.style.color = "#ffffff";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = "#cbd5e1";
-                  }
-                }}
+                className={`wl-preset-item ${isSelected ? "active" : ""}`}
               >
                 <span>{preset.name}</span>
                 {isSelected && (

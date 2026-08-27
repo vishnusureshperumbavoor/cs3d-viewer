@@ -31,21 +31,13 @@ function applyMPRTransferFunctions(
   targetAlpha: number = 0.85,
   unitDist?: number
 ) {
-  console.log("[MPRSeg] applyMPRTransferFunctions called for segId:", segId, "with visibility:", segmentVisibility, "alpha:", targetAlpha);
   MPR_VIEWPORT_IDS.forEach((id) => {
     const vp = engine.getViewport(id) as any;
-    if (!vp) {
-      console.warn("[MPRSeg] Viewport not found for id:", id);
-      return;
-    }
+    if (!vp) return;
     const actors = vp.getActors?.() || [];
-    console.log(`[MPRSeg] Viewport ${id} actors (${actors.length}):`, actors.map((a: any) => ({ uid: a.uid, referencedId: a.referencedId })));
 
     const segActorEntry = actors.find((a: any) => a.referencedId === segId || a.uid?.includes(segId));
-    if (!segActorEntry) {
-      console.warn(`[MPRSeg] No segmentation actor matching segId '${segId}' found in viewport ${id}!`);
-    } else if (segActorEntry.actor && typeof segActorEntry.actor.getProperty === "function") {
-      console.log(`[MPRSeg] Updating VTK transfer functions for actor in viewport ${id}...`);
+    if (segActorEntry?.actor && typeof segActorEntry.actor.getProperty === "function") {
       const actor = segActorEntry.actor;
       const prop = actor.getProperty();
       const cfun = vtkColorTransferFunction.newInstance();

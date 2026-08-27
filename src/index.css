@@ -1,5 +1,38 @@
+@import "./styles/top-nav.css";
+@import "./styles/sidebar.css";
+@import "./styles/segmentation-panel.css";
+@import "./styles/mpr.css";
+
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+/* ── WebKit Custom Dark Scrollbars ── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 211, 153, 0.45);
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 :root {
@@ -884,10 +917,22 @@ body {
   flex-shrink: 0;
 }
 
-@media (max-width: 768px) {
+/* Responsive Patient Header */
+@media (max-width: 900px) {
+  .patient-header-info {
+    gap: 8px;
+    padding: 0 8px;
+  }
+
+  .patient-detail-group:nth-child(n+5),
+  .patient-detail-divider:nth-child(n+4) {
+    display: none; /* Hide DOB and SEX on tablet/mobile */
+  }
+}
+
+@media (max-width: 640px) {
   .patient-header-info {
     display: none;
-    /* Hide patient details on narrow screens to prevent overlap */
   }
 }
 
@@ -916,13 +961,56 @@ body {
   grid-template-columns: 48px minmax(0, 1fr) 48px;
 }
 
-@media (max-width: 1300px) {
+/* Laptop & Medium Screens (1024px - 1400px) */
+@media (max-width: 1400px) {
+  .viewer-layout {
+    padding: 12px;
+    gap: 12px;
+  }
+
   .viewer-layout.left-open.with-seg-panel {
-    grid-template-columns: 240px minmax(0, 1fr) 260px;
+    grid-template-columns: 230px minmax(0, 1fr) 240px;
+  }
+
+  .viewer-layout.left-open.with-seg-collapsed {
+    grid-template-columns: 230px minmax(0, 1fr) 44px;
+  }
+
+  .viewer-layout.left-collapsed.with-seg-panel {
+    grid-template-columns: 44px minmax(0, 1fr) 240px;
+  }
+
+  .viewer-layout.left-collapsed.with-seg-collapsed {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
   }
 }
 
-@media (max-width: 1100px) {
+/* Tablet Screens (768px - 1024px) */
+@media (max-width: 1024px) {
+  .viewer-layout {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .viewer-layout.left-open.with-seg-panel {
+    grid-template-columns: 200px minmax(0, 1fr) 215px;
+  }
+
+  .viewer-layout.left-open.with-seg-collapsed {
+    grid-template-columns: 200px minmax(0, 1fr) 40px;
+  }
+
+  .viewer-layout.left-collapsed.with-seg-panel {
+    grid-template-columns: 40px minmax(0, 1fr) 215px;
+  }
+
+  .viewer-layout.left-collapsed.with-seg-collapsed {
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+  }
+}
+
+/* Mobile Screens (< 768px) */
+@media (max-width: 768px) {
   .viewer-layout,
   .viewer-layout.left-open,
   .viewer-layout.left-collapsed,
@@ -931,6 +1019,19 @@ body {
   .viewer-layout.left-collapsed.with-seg-panel,
   .viewer-layout.left-collapsed.with-seg-collapsed {
     grid-template-columns: 1fr;
+    padding: 8px;
+    gap: 10px;
+  }
+
+  .viewer-card {
+    height: 55vh;
+    min-height: 360px;
+  }
+
+  .mpr-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, 250px);
+    overflow-y: auto;
   }
 }
 
@@ -961,26 +1062,7 @@ body {
   box-shadow: 0 0 14px rgba(16, 185, 129, 0.2);
   border-color: rgba(16, 185, 129, 0.6);
 }
-
-/* Segmentation Side Panel - Base */
-.seg-panel {
-  background: rgba(10, 10, 10, 0.94);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-  max-height: calc(100vh - 108px);
-  transition: width 0.2s ease, padding 0.2s ease;
-}
-
-/* Segmentation Side Panel - Expanded */
-.seg-panel.expanded {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-  animation: slideInRight 0.22s ease-out;
-}
+/* Legacy right-panel styles replaced by src/styles/segmentation-panel.css */
 
 /* Segmentation Side Panel - Collapsed Vertical Dock */
 .seg-panel.collapsed {
