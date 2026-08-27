@@ -1,27 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { getRenderingEngine, RenderingEngine, Enums as CoreEnums } from "@cornerstonejs/core";
+import { imageLoader } from "@cornerstonejs/core";
 import { initCornerstone } from "../services/cornerstone-service";
 
 type SeriesThumbnailProps = {
   imageId: string;
 };
 
-const THUMBNAIL_ENGINE_ID = "THUMBNAIL_RENDERING_ENGINE";
-
 export default function SeriesThumbnail({ imageId }: SeriesThumbnailProps) {
-  const elementRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const element = elementRef.current;
-    if (!element) return;
-
     let isCancelled = false;
-    const safeId = imageId.replace(/[^a-zA-Z0-9]/g, "_");
-    const viewportId = `thumb_vp_${safeId}`;
+    const canvas = canvasRef.current;
+    if (!canvas || !imageId) return;
 
-    const loadAndRender = async () => {
+    const renderThumbnail = async () => {
       try {
         setLoading(true);
         setError(false);
@@ -29,74 +24,80 @@ export default function SeriesThumbnail({ imageId }: SeriesThumbnailProps) {
         await initCornerstone();
         if (isCancelled) return;
 
-        // Ensure element has non-zero layout dimensions before WebGL initialization
-        if (element.clientWidth === 0 || element.clientHeight === 0) {
-          await new Promise((resolve) => requestAnimationFrame(resolve));
-          if (isCancelled || !element.clientWidth || !element.clientHeight) return;
+        const image = (await imageLoader.loadAndCacheImage(imageId)) as any;
+        if (isCancelled) return;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const rows = image.rows || image.height;
+        const columns = image.columns || image.width;
+        const pixelData = typeof image.getPixelData === "function" ? image.getPixelData() : image.pixelData;
+
+        if (!pixelData || !rows || !columns) {
+          setError(true);
+          setLoading(false);
+          return;
         }
 
-        let renderingEngine = getRenderingEngine(THUMBNAIL_ENGINE_ID);
-        if (!renderingEngine) {
-          renderingEngine = new RenderingEngine(THUMBNAIL_ENGINE_ID);
+        canvas.width = columns;
+        canvas.height = rows;
+
+        const windowWidth = Array.isArray(image.windowWidth) ? image.windowWidth[0] : (image.windowWidth || 400);
+        const windowCenter = Array.isArray(image.windowCenter) ? image.windowCenter[0] : (image.windowCenter || 40);
+        const slope = image.slope ?? 1;
+        const intercept = image.intercept ?? 0;
+
+        const minVal = windowCenter - 0.5 - (windowWidth - 1) / 2;
+        const maxVal = windowCenter - 0.5 + (windowWidth - 1) / 2;
+        const range = maxVal - minVal || 1;
+
+        const imgData = ctx.createImageData(columns, rows);
+        const data = imgData.data;
+
+        for (let i = 0; i < pixelData.length; i++) {
+          const rawVal = pixelData[i] * slope + intercept;
+          let intensity = ((rawVal - minVal) / range) * 255;
+          if (intensity < 0) intensity = 0;
+          if (intensity > 255) intensity = 255;
+
+          const idx = i * 4;
+          data[idx] = intensity;
+          data[idx + 1] = intensity;
+          data[idx + 2] = intensity;
+          data[idx + 3] = 255;
         }
 
-        renderingEngine.enableElement({
-          viewportId,
-          type: CoreEnums.ViewportType.STACK,
-          element,
-          defaultOptions: {
-            background: [0, 0, 0] as [number, number, number],
-          },
-        });
-
-        const viewport = renderingEngine.getViewport(viewportId) as any;
-        if (viewport) {
-          try {
-            await viewport.setStack([imageId]);
-            if (isCancelled) {
-              renderingEngine.disableElement(viewportId);
-              return;
-            }
-            renderingEngine.resize();
-            viewport.render();
-            setLoading(false);
-          } catch (renderErr) {
-            console.warn("Thumbnail viewport render warning:", renderErr);
-            if (!isCancelled) {
-              setLoading(false);
-            }
-          }
-        }
+        ctx.putImageData(imgData, 0, 0);
+        setLoading(false);
       } catch (err) {
-        console.warn("Failed to load series thumbnail image:", err);
         if (!isCancelled) {
-          setError(false);
+          setError(true);
           setLoading(false);
         }
       }
     };
 
-    void loadAndRender();
+    void renderThumbnail();
 
     return () => {
       isCancelled = true;
-      const renderingEngine = getRenderingEngine(THUMBNAIL_ENGINE_ID);
-      if (renderingEngine) {
-        try {
-          renderingEngine.disableElement(viewportId);
-        } catch (e) {
-          // Ignore if already disabled
-        }
-      }
     };
   }, [imageId]);
 
   return (
     <div className="series-thumbnail-container">
-      <div 
-        ref={elementRef} 
+      <canvas
+        ref={canvasRef}
         className="series-thumbnail-viewport"
-        style={{ width: "100%", height: "100%", minWidth: "60px", minHeight: "60px" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          minWidth: "60px",
+          minHeight: "60px",
+          objectFit: "cover",
+          display: error ? "none" : "block",
+        }}
       />
       {loading && (
         <div className="thumbnail-overlay">

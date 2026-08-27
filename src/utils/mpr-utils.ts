@@ -71,33 +71,33 @@ export function apply3DVolumePreset(vp3D: any, presetId: string, volumeId?: stri
           const ofun = vtkPiecewiseFunction.newInstance();
           const cfun = vtkColorTransferFunction.newInstance();
 
-          // Air, lungs, and deep fat: 0 opacity
+          // Air, lungs, deep fat, and low density: 0 opacity
           ofun.addPoint(-1024, 0.0);
-          ofun.addPoint(-50, 0.0);
-          // Translucent glass skin & soft tissue silhouette
-          ofun.addPoint(0, 0.005);
-          ofun.addPoint(120, 0.005);
-          // Semi-transparent skeletal context (ribs & spine)
-          ofun.addPoint(220, 0.03);
-          ofun.addPoint(450, 0.18);
-          ofun.addPoint(1200, 0.35);
+          ofun.addPoint(0, 0.0);
+          // Ultra-sheer glass skin & soft tissue boundary
+          ofun.addPoint(50, 0.0015);
+          ofun.addPoint(150, 0.0015);
+          // Very light skeletal landmarks (ribs & spine)
+          ofun.addPoint(250, 0.015);
+          ofun.addPoint(500, 0.08);
+          ofun.addPoint(1200, 0.20);
 
           cfun.addRGBPoint(-1024, 0.0, 0.0, 0.0);
-          cfun.addRGBPoint(-50, 0.0, 0.0, 0.0);
-          cfun.addRGBPoint(0, 0.75, 0.82, 0.9);   // Ice-glass contour
-          cfun.addRGBPoint(120, 0.7, 0.75, 0.85);
-          cfun.addRGBPoint(220, 0.85, 0.85, 0.8); // Bone landmarks
+          cfun.addRGBPoint(0, 0.0, 0.0, 0.0);
+          cfun.addRGBPoint(50, 0.7, 0.8, 0.9);    // Crystal-glass silhouette
+          cfun.addRGBPoint(150, 0.65, 0.75, 0.85);
+          cfun.addRGBPoint(250, 0.85, 0.85, 0.8); // Faint bone context
           cfun.addRGBPoint(1200, 1.0, 1.0, 1.0);
 
           prop.setRGBTransferFunction(0, cfun);
           prop.setScalarOpacity(0, ofun);
           if (typeof prop.setScalarOpacityUnitDistance === "function") {
-            prop.setScalarOpacityUnitDistance(0, 30.0);
+            prop.setScalarOpacityUnitDistance(0, 50.0);
           }
           prop.setShade(true);
-          prop.setAmbient(0.25);
-          prop.setDiffuse(0.75);
-          prop.setSpecular(0.2);
+          prop.setAmbient(0.3);
+          prop.setDiffuse(0.7);
+          prop.setSpecular(0.15);
           prop.modified();
           ctActorEntry.actor.modified();
         }

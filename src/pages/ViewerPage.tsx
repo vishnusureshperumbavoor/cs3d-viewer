@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getRenderingEngine } from "@cornerstonejs/core";
 import {
   CornerstoneViewport,
   SeriesThumbnail,
@@ -9,6 +10,7 @@ import {
 } from "../components";
 import { WLPresetToolbar } from "../components/viewport/WLPresetToolbar";
 import { MPRViewer, resetMPRCameras } from "../components/viewport/MPRViewer";
+import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS } from "../utils/mpr-utils";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
 import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
@@ -111,6 +113,21 @@ export default function ViewerPage() {
     } else {
       setActiveRightSidebarTab("segmentation");
     }
+
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+      try {
+        const mprEngine = getRenderingEngine(RENDERING_ENGINE_ID);
+        mprEngine?.resize(true, true);
+        mprEngine?.renderViewports([...MPR_VIEWPORT_IDS, "mpr-3d"]);
+      } catch (_) { }
+
+      try {
+        const stackEngine = getRenderingEngine("mainViewerRenderingEngine");
+        stackEngine?.resize(true, true);
+        stackEngine?.render();
+      } catch (_) { }
+    });
   }, [viewMode]);
 
   const [isSegmentingTotal, setIsSegmentingTotal] = useState(false);
@@ -308,13 +325,12 @@ export default function ViewerPage() {
       </nav>
 
       <main
-        className={`viewer-layout ${isLeftSidebarOpen ? "left-open" : "left-collapsed"} ${
-          segData || viewMode === "3d"
+        className={`viewer-layout ${isLeftSidebarOpen ? "left-open" : "left-collapsed"} ${segData || viewMode === "3d"
             ? isSegPanelOpen
               ? "with-seg-panel"
               : "with-seg-collapsed"
             : ""
-        }`}
+          }`}
       >
         {seriesList.length > 0 &&
           (isLeftSidebarOpen ? (
@@ -360,9 +376,8 @@ export default function ViewerPage() {
                   return (
                     <button
                       key={series.seriesUid}
-                      className={`series-card ${isSegSeries ? "seg-series-card" : ""} ${
-                        isSelected ? "active" : ""
-                      }`}
+                      className={`series-card ${isSegSeries ? "seg-series-card" : ""} ${isSelected ? "active" : ""
+                        }`}
                       onClick={() => {
                         setSelectedSeriesUid(series.seriesUid);
                       }}
@@ -508,31 +523,46 @@ export default function ViewerPage() {
                   <p>{error}</p>
                 </div>
               </div>
-            ) : viewMode === "2d" ? (
-              activeImageIds.length === 0 ? (
-                <div className="viewer-empty-state">
-                  <div>
-                    <h3>Preparing Viewer</h3>
-                    <p>Loading study metadata and image stack.</p>
-                  </div>
+            ) : activeImageIds.length === 0 ? (
+              <div className="viewer-empty-state">
+                <div>
+                  <h3>Preparing Viewer</h3>
+                  <p>Loading study metadata and image stack.</p>
                 </div>
-              ) : (
-                <CornerstoneViewport
-                  imageIds={activeImageIds}
-                  isAIActive={isAIActive}
-                  segData={segData}
-                  segmentVisibility={segVisibility}
-                  segmentOpacity={segmentOpacity}
-                />
-              )
+              </div>
             ) : (
-              <MPRViewer
-                imageIds={activeImageIds}
-                seriesUid={selectedSeriesUid}
-                active3DPreset={active3DPreset}
-                segData={segData}
-                segmentVisibility={segVisibility}
-              />
+              <>
+                <div
+                  style={{
+                    display: viewMode === "2d" ? "block" : "none",
+                    width: "100%",
+                    height: "100%",
+                  }}
+                >
+                  <CornerstoneViewport
+                    imageIds={activeImageIds}
+                    isAIActive={isAIActive}
+                    segData={segData}
+                    segmentVisibility={segVisibility}
+                    segmentOpacity={segmentOpacity}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: viewMode === "3d" ? "block" : "none",
+                    width: "100%",
+                    height: "100%",
+                  }}
+                >
+                  <MPRViewer
+                    imageIds={activeImageIds}
+                    seriesUid={selectedSeriesUid}
+                    active3DPreset={active3DPreset}
+                    segData={segData}
+                    segmentVisibility={segVisibility}
+                  />
+                </div>
+              </>
             )}
           </div>
         </section>

@@ -256,7 +256,6 @@ export function useMPRSegmentation(
               }
             }
 
-            console.log(`[3D Seg] Segment ${segNum} (${seg.label}): ${segVoxels} voxels`);
             if (segVoxels === 0) continue;
 
             const labelmapData: LabelmapData = {
@@ -269,9 +268,7 @@ export function useMPRSegmentation(
             };
 
             try {
-              console.log(`[3D Seg] Requesting Marching Cubes surface mesh for segment ${segNum}...`);
               const surface = await polysegServices.convertLabelmapToSurface(labelmapData);
-              console.log(`[3D Seg] Surface received for segment ${segNum}: ${surface.points.length / 3} vertices, ${surface.polys.length} poly indices`);
 
               const polyData = vtkPolyData.newInstance();
               const points = vtkPoints.newInstance();
@@ -312,13 +309,11 @@ export function useMPRSegmentation(
               }
 
               surfaceActorsRef.current[segNum] = { actor, uid: actorUid };
-              console.log(`[3D Seg] Actor mounted for segment ${segNum} ✓`);
             } catch (err) {
-              console.error(`[3D Seg] Failed to generate smooth 3D surface for segment ${segNum}:`, err);
+              console.error(`Failed to generate smooth 3D surface for segment ${segNum}:`, err);
             }
           }
           vp3D.render();
-          console.log("[3D Seg] vp3D rendered ✓");
         }
       } catch (err) {
         console.error("MPR segmentation overlay failed:", err);
