@@ -206,52 +206,55 @@ export default function ViewerPage() {
               <button
                 onClick={() => setViewMode("2d")}
                 className={`tab-btn-2d ${viewMode === "2d" ? "active" : ""}`}
+                title="2D Slice View"
+                aria-label="2D View"
                 style={{
-                  padding: "6px 12px",
+                  padding: "6px 10px",
                   borderRadius: "6px",
                   background: viewMode === "2d" ? "var(--accent)" : "transparent",
                   color: "#ffffff",
                   border: "none",
-                  fontWeight: 600,
-                  fontSize: "0.85rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   cursor: "pointer",
                   transition: "all 0.2s ease"
                 }}
               >
-                2D Stack
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.9a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
+                  <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
+                  <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
+                </svg>
               </button>
               <button
                 onClick={() => setViewMode("3d")}
                 className={`tab-btn-3d ${viewMode === "3d" ? "active" : ""}`}
+                title="3D Volume View"
+                aria-label="3D View"
                 style={{
-                  padding: "6px 12px",
+                  padding: "6px 10px",
                   borderRadius: "6px",
                   background: viewMode === "3d" ? "var(--accent)" : "transparent",
                   color: "#ffffff",
                   border: "none",
-                  fontWeight: 600,
-                  fontSize: "0.85rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   cursor: "pointer",
                   transition: "all 0.2s ease"
                 }}
               >
-                3D Seg
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m21.12 6.4-6-3.46a4 4 0 0 0-3.94 0L4.88 6.4A4 4 0 0 0 3 9.87v6.26a4 4 0 0 0 1.88 3.47l6.3 3.63a4 4 0 0 0 3.94 0l6-3.46a4 4 0 0 0 2-3.47V9.87a4 4 0 0 0-2.06-3.47Z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
               </button>
             </div>
 
             {viewMode === "2d" && (
               <AIToolbar isAIActive={isAIActive} onToggleAI={setIsAIActive} />
-            )}
-
-            {segData && (
-              <button
-                className={`seg-nav-toggle-btn ${isSegPanelOpen ? "active" : ""}`}
-                onClick={() => setIsSegPanelOpen((prev) => !prev)}
-                title={isSegPanelOpen ? "Close segmentation panel" : "View segmentation details"}
-              >
-                <span>🧬</span>
-                <span>Segmentation ({segData.segments.length})</span>
-              </button>
             )}
 
             <button
@@ -279,7 +282,7 @@ export default function ViewerPage() {
         </div>
       </nav>
 
-      <main className={`viewer-layout ${isSegPanelOpen && segData ? "with-seg-panel" : ""}`}>
+      <main className={`viewer-layout ${segData ? (isSegPanelOpen ? "with-seg-panel" : "with-seg-collapsed") : ""}`}>
         {viewMode === "2d" ? (
           seriesList.length > 0 && (
             <aside className="viewer-sidebar">
@@ -412,7 +415,7 @@ export default function ViewerPage() {
         {segData && (
           <SegmentationPanel
             isOpen={isSegPanelOpen}
-            onClose={() => setIsSegPanelOpen(false)}
+            onToggle={() => setIsSegPanelOpen((prev) => !prev)}
             segData={segData}
             isLoading={isLoadingSeg}
             segmentVisibility={segVisibility}

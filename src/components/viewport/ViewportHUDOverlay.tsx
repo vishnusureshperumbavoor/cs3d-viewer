@@ -60,29 +60,28 @@ export function ViewportHUDOverlay({
             position: "absolute",
             bottom: "12px",
             left: "12px",
-            background: "rgba(15, 23, 42, 0.85)",
-            backdropFilter: "blur(6px)",
-            color: "#38bdf8",
-            padding: "5px 12px",
-            borderRadius: "6px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "2px",
             fontFamily: "monospace",
             fontSize: "0.85rem",
             fontWeight: 600,
+            color: "#ffffff",
+            textShadow: "1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000",
             pointerEvents: "none",
-            border: "1px solid rgba(56, 189, 248, 0.3)",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.4)",
+            userSelect: "none",
             zIndex: 10,
           }}
         >
           {sliceInfo && (
-            <span style={{ color: "#34d399", marginRight: "8px" }}>
+            <div>
               Slice: {sliceInfo.current}/{sliceInfo.total}
-            </span>
+            </div>
           )}
           {voiInfo && (
-            <span>
-              WW: {voiInfo.ww} | WL: {voiInfo.wc}
-            </span>
+            <div>
+              WW: {voiInfo.ww} WL: {voiInfo.wc}
+            </div>
           )}
         </div>
       )}
