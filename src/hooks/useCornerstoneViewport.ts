@@ -85,51 +85,51 @@ export function useCornerstoneViewport({
     const { imagePositionPatient, rowCosines, columnCosines, pixelSpacing, rows, columns } = imagePlane;
     const [rowSpacing, colSpacing] = pixelSpacing || [1, 1];
 
-    // Compute top-left and bottom-right on canvas using indexToWorld or patient coords
-    const imageData = viewport.getImageData ? viewport.getImageData() : null;
-    let cTL: [number, number] | undefined;
-    let cBR: [number, number] | undefined;
+    // Compute 3 points in patient coordinates: (0,0), (cols,0), and (0,numRows)
+    const p00 = [
+      Number(imagePositionPatient[0]) || 0,
+      Number(imagePositionPatient[1]) || 0,
+      Number(imagePositionPatient[2]) || 0,
+    ];
+    const rCos = [
+      Number(rowCosines[0]) || 1,
+      Number(rowCosines[1]) || 0,
+      Number(rowCosines[2]) || 0,
+    ];
+    const cCos = [
+      Number(columnCosines[0]) || 0,
+      Number(columnCosines[1]) || 1,
+      Number(columnCosines[2]) || 0,
+    ];
+    const rSp = Number(rowSpacing) || 1;
+    const cSp = Number(colSpacing) || 1;
+    const cols = Number(columns) || 512;
+    const numRows = Number(rows) || 512;
 
-    if (imageData && typeof imageData.indexToWorld === "function") {
-      const pTL = imageData.indexToWorld([0, 0]);
-      const pBR = imageData.indexToWorld([columns, rows]);
-      cTL = viewport.worldToCanvas(pTL);
-      cBR = viewport.worldToCanvas(pBR);
-    } else {
-      const pTL = [
-        Number(imagePositionPatient[0]) || 0,
-        Number(imagePositionPatient[1]) || 0,
-        Number(imagePositionPatient[2]) || 0,
-      ];
-      const rCos = [
-        Number(rowCosines[0]) || 1,
-        Number(rowCosines[1]) || 0,
-        Number(rowCosines[2]) || 0,
-      ];
-      const cCos = [
-        Number(columnCosines[0]) || 0,
-        Number(columnCosines[1]) || 1,
-        Number(columnCosines[2]) || 0,
-      ];
-      const rSp = Number(rowSpacing) || 1;
-      const cSp = Number(colSpacing) || 1;
-      const pBR = [
-        pTL[0] + columns * cSp * rCos[0] + rows * rSp * cCos[0],
-        pTL[1] + columns * cSp * rCos[1] + rows * rSp * cCos[1],
-        pTL[2] + columns * cSp * rCos[2] + rows * rSp * cCos[2],
-      ];
-      cTL = viewport.worldToCanvas(pTL);
-      cBR = viewport.worldToCanvas(pBR);
-    }
+    const p10 = [
+      p00[0] + cols * cSp * rCos[0],
+      p00[1] + cols * cSp * rCos[1],
+      p00[2] + cols * cSp * rCos[2],
+    ];
+    const p01 = [
+      p00[0] + numRows * rSp * cCos[0],
+      p00[1] + numRows * rSp * cCos[1],
+      p00[2] + numRows * rSp * cCos[2],
+    ];
 
-    if (!cTL || !cBR || !Number.isFinite(cTL[0]) || !Number.isFinite(cBR[0])) return;
+    const c00 = viewport.worldToCanvas(p00);
+    const c10 = viewport.worldToCanvas(p10);
+    const c01 = viewport.worldToCanvas(p01);
 
-    const destX = Math.min(cTL[0], cBR[0]);
-    const destY = Math.min(cTL[1], cBR[1]);
-    const destW = Math.abs(cBR[0] - cTL[0]);
-    const destH = Math.abs(cBR[1] - cTL[1]);
+    if (!c00 || !c10 || !c01) return;
+    if (!Number.isFinite(c00[0]) || !Number.isFinite(c10[0]) || !Number.isFinite(c01[0])) return;
 
-    if (destW <= 0 || destH <= 0) return;
+    const a = (c10[0] - c00[0]) / cols;
+    const b = (c10[1] - c00[1]) / cols;
+    const c = (c01[0] - c00[0]) / numRows;
+    const d = (c01[1] - c00[1]) / numRows;
+    const e = c00[0];
+    const f = c00[1];
 
     // Reuse offscreen canvas for blitting mask
     let offscreen = offscreenCanvasRef.current;
@@ -137,17 +137,17 @@ export function useCornerstoneViewport({
       offscreen = document.createElement("canvas");
       offscreenCanvasRef.current = offscreen;
     }
-    if (offscreen.width !== columns || offscreen.height !== rows) {
-      offscreen.width = columns;
-      offscreen.height = rows;
+    if (offscreen.width !== cols || offscreen.height !== numRows) {
+      offscreen.width = cols;
+      offscreen.height = numRows;
     }
 
     const offCtx = offscreen.getContext("2d");
     if (!offCtx) return;
 
-    const imgData = offCtx.createImageData(columns, rows);
+    const imgData = offCtx.createImageData(cols, numRows);
     const data = imgData.data;
-    const numPixels = columns * rows;
+    const numPixels = cols * numRows;
     let hasAnyPixel = false;
     const currentOpacity = segOpacityRef.current ?? 0.5;
     const alphaByte = Math.round(currentOpacity * 255);
@@ -175,8 +175,11 @@ export function useCornerstoneViewport({
 
     if (hasAnyPixel) {
       offCtx.putImageData(imgData, 0, 0);
+      ctx.save();
+      ctx.setTransform(a, b, c, d, e, f);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(offscreen, destX, destY, destW, destH);
+      ctx.drawImage(offscreen, 0, 0);
+      ctx.restore();
     }
   };
 
@@ -194,6 +197,7 @@ export function useCornerstoneViewport({
 
     let isCancelled = false;
     let renderingEngine: RenderingEngine | null = null;
+    let resizeObserver: ResizeObserver | null = null;
 
     const updateVoiDisplay = () => {
       renderSegOverlay();
@@ -336,7 +340,21 @@ export function useCornerstoneViewport({
       element.addEventListener(CoreEnums.Events.VOI_MODIFIED as any, updateVoiDisplay);
       element.addEventListener(CoreEnums.Events.IMAGE_RENDERED as any, updateVoiDisplay);
       element.addEventListener(CoreEnums.Events.STACK_NEW_IMAGE as any, updateVoiDisplay);
+      element.addEventListener(CoreEnums.Events.CAMERA_MODIFIED as any, updateVoiDisplay);
       element.addEventListener("click", handleCanvasClick);
+
+      resizeObserver = new ResizeObserver(() => {
+        const engine = getRenderingEngine(renderingEngineId);
+        if (engine) {
+          engine.resize(true, true);
+          const vp = engine.getViewport(viewportId) as any;
+          if (vp) {
+            vp.render();
+          }
+        }
+        updateVoiDisplay();
+      });
+      resizeObserver.observe(element);
 
       const viewport = renderingEngine.getViewport(viewportId) as any;
       if (viewport) {
@@ -352,10 +370,15 @@ export function useCornerstoneViewport({
     return () => {
       isCancelled = true;
 
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+
       if (element) {
         element.removeEventListener(CoreEnums.Events.VOI_MODIFIED as any, updateVoiDisplay);
         element.removeEventListener(CoreEnums.Events.IMAGE_RENDERED as any, updateVoiDisplay);
         element.removeEventListener(CoreEnums.Events.STACK_NEW_IMAGE as any, updateVoiDisplay);
+        element.removeEventListener(CoreEnums.Events.CAMERA_MODIFIED as any, updateVoiDisplay);
         element.removeEventListener("click", handleCanvasClick);
       }
 
