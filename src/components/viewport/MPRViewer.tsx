@@ -49,7 +49,11 @@ export function resetMPRCameras() {
       ["mpr-axial", "mpr-sagittal", "mpr-coronal", "mpr-3d"].forEach((id) => {
         const vp = engine.getViewport(id) as any;
         if (vp) {
-          vp.resetCamera();
+          if (id === "mpr-3d" && typeof vp.applyViewOrientation === "function") {
+            vp.applyViewOrientation(CoreEnums.OrientationAxis.CORONAL);
+          } else {
+            vp.resetCamera();
+          }
           if (id !== "mpr-3d" && typeof vp.setProperties === "function") {
             vp.setProperties({ voiRange: DEFAULT_VOI_RANGE });
           }
@@ -226,6 +230,7 @@ export function MPRViewer({
             type: CoreEnums.ViewportType.VOLUME_3D,
             element: volume3dRef.current!,
             defaultOptions: {
+              orientation: CoreEnums.OrientationAxis.CORONAL,
               background: [0.02, 0.02, 0.03] as [number, number, number],
             },
           },
@@ -329,10 +334,14 @@ export function MPRViewer({
           }
         });
 
-        // Apply active preset to 3D Viewport
         const vp3D = engine.getViewport("mpr-3d") as any;
-        if (vp3D && typeof vp3D.setPreset === "function") {
-          vp3D.setPreset(active3DPreset);
+        if (vp3D) {
+          if (typeof vp3D.applyViewOrientation === "function") {
+            vp3D.applyViewOrientation(CoreEnums.OrientationAxis.CORONAL);
+          }
+          if (typeof vp3D.setPreset === "function") {
+            vp3D.setPreset(active3DPreset);
+          }
         }
 
         engine.renderViewports([
