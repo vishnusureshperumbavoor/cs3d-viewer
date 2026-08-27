@@ -34,8 +34,6 @@ export const useStudyImages = () => {
 
       try {
         const instances = await fetchStudyInstances(DEFAULT_WADO_BASE, studyInstanceUid);
-        console.log("Study instances", instances);
-
         if (isCancelled) {
           return;
         }

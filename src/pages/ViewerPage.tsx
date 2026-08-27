@@ -530,6 +530,8 @@ export default function ViewerPage() {
                 imageIds={activeImageIds}
                 seriesUid={selectedSeriesUid}
                 active3DPreset={active3DPreset}
+                segData={segData}
+                segmentVisibility={segVisibility}
               />
             )}
           </div>

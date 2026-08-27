@@ -17,11 +17,26 @@ import {
   TrackballRotateTool,
 } from "@cornerstonejs/tools";
 import { initCornerstone } from "../../services/cornerstone-service";
+import type { DicomSegData } from "../../services/dicom-seg-service";
+import { useMPRSegmentation } from "../../hooks/useMPRSegmentation";
+import {
+  RENDERING_ENGINE_ID,
+  MPR_TOOLGROUP_ID,
+  VOLUME_3D_TOOLGROUP_ID,
+  DEFAULT_WW,
+  DEFAULT_WL,
+  DEFAULT_VOI_RANGE,
+  MPR_VIEWPORT_IDS,
+} from "../../utils/mpr-utils";
+
+export { resetMPRCameras } from "../../utils/mpr-utils";
 
 interface MPRViewerProps {
   imageIds: string[];
   seriesUid: string | null;
   active3DPreset?: string;
+  segData?: DicomSegData | null;
+  segmentVisibility?: Record<number, boolean>;
 }
 
 interface ViewportHUDState {
@@ -31,45 +46,12 @@ interface ViewportHUDState {
   wl: number;
 }
 
-const RENDERING_ENGINE_ID = "MPR_RENDERING_ENGINE";
-const MPR_TOOLGROUP_ID = "MPR_TOOLGROUP";
-const VOLUME_3D_TOOLGROUP_ID = "VOLUME_3D_TOOLGROUP";
-
-const DEFAULT_WW = 650;
-const DEFAULT_WL = 1150;
-const DEFAULT_VOI_RANGE = {
-  lower: DEFAULT_WL - DEFAULT_WW / 2,
-  upper: DEFAULT_WL + DEFAULT_WW / 2,
-};
-
-export function resetMPRCameras() {
-  try {
-    const engine = getRenderingEngine(RENDERING_ENGINE_ID);
-    if (engine) {
-      ["mpr-axial", "mpr-sagittal", "mpr-coronal", "mpr-3d"].forEach((id) => {
-        const vp = engine.getViewport(id) as any;
-        if (vp) {
-          if (id === "mpr-3d" && typeof vp.applyViewOrientation === "function") {
-            vp.applyViewOrientation(CoreEnums.OrientationAxis.CORONAL);
-          } else {
-            vp.resetCamera();
-          }
-          if (id !== "mpr-3d" && typeof vp.setProperties === "function") {
-            vp.setProperties({ voiRange: DEFAULT_VOI_RANGE });
-          }
-          vp.render();
-        }
-      });
-    }
-  } catch (e) {
-    console.warn("Failed to reset cameras:", e);
-  }
-}
-
 export function MPRViewer({
   imageIds,
   seriesUid,
   active3DPreset = "CT-AAA",
+  segData,
+  segmentVisibility,
 }: MPRViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const axialRef = useRef<HTMLDivElement>(null);
@@ -77,33 +59,27 @@ export function MPRViewer({
   const coronalRef = useRef<HTMLDivElement>(null);
   const volume3dRef = useRef<HTMLDivElement>(null);
 
+  const safeSeries = seriesUid ? seriesUid.replace(/[^a-zA-Z0-9]/g, "_") : "unknown";
+  const volumeId = `cornerstoneStreamingImageVolume:CT_VOL_${safeSeries}`;
+
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [volumeReady, setVolumeReady] = useState(false);
 
-  // HUD States for Axial, Sagittal, Coronal planes
-  const [axialHUD, setAxialHUD] = useState<ViewportHUDState>({
+  const defaultHUD = (numSlices?: number): ViewportHUDState => ({
     sliceIndex: 1,
-    numSlices: imageIds.length > 0 ? imageIds.length : 1,
+    numSlices: numSlices ?? 512,
     ww: DEFAULT_WW,
     wl: DEFAULT_WL,
   });
 
-  const [sagittalHUD, setSagittalHUD] = useState<ViewportHUDState>({
-    sliceIndex: 1,
-    numSlices: 512,
-    ww: DEFAULT_WW,
-    wl: DEFAULT_WL,
-  });
+  const [axialHUD, setAxialHUD] = useState<ViewportHUDState>(defaultHUD(imageIds.length));
+  const [sagittalHUD, setSagittalHUD] = useState<ViewportHUDState>(defaultHUD());
+  const [coronalHUD, setCoronalHUD] = useState<ViewportHUDState>(defaultHUD());
 
-  const [coronalHUD, setCoronalHUD] = useState<ViewportHUDState>({
-    sliceIndex: 1,
-    numSlices: 512,
-    ww: DEFAULT_WW,
-    wl: DEFAULT_WL,
-  });
+  useMPRSegmentation(segData, segmentVisibility, seriesUid, volumeId, volumeReady);
 
-  // Dynamically apply 3D preset whenever active3DPreset prop updates
   useEffect(() => {
     if (!active3DPreset) return;
     try {
@@ -127,8 +103,7 @@ export function MPRViewer({
     }
 
     let isCancelled = false;
-    const safeSeries = seriesUid.replace(/[^a-zA-Z0-9]/g, "_");
-    const volumeId = `cornerstoneStreamingImageVolume:CT_VOL_${safeSeries}`;
+    setVolumeReady(false);
 
     const updateHUD = (
       viewportId: string,
@@ -142,25 +117,22 @@ export function MPRViewer({
       let currentSlice = 1;
       let totalSlices = viewportId === "mpr-axial" ? imageIds.length : 512;
       try {
-        if (typeof vp.getSliceIndex === "function") {
-          currentSlice = vp.getSliceIndex() + 1;
-        }
+        if (typeof vp.getSliceIndex === "function") currentSlice = vp.getSliceIndex() + 1;
         if (typeof vp.getNumberOfSlices === "function") {
-          const count = vp.getNumberOfSlices();
-          if (count && count > 0) totalSlices = count;
+          const n = vp.getNumberOfSlices();
+          if (n && n > 0) totalSlices = n;
         }
-      } catch (e) {}
+      } catch (_) { }
 
       let ww = DEFAULT_WW;
       let wl = DEFAULT_WL;
       try {
-        const props =
-          typeof vp.getProperties === "function" ? vp.getProperties() : null;
+        const props = typeof vp.getProperties === "function" ? vp.getProperties() : null;
         if (props?.voiRange) {
           ww = Math.round(props.voiRange.upper - props.voiRange.lower);
           wl = Math.round((props.voiRange.upper + props.voiRange.lower) / 2);
         }
-      } catch (e) {}
+      } catch (_) { }
 
       setHUD({
         sliceIndex: currentSlice > 0 ? currentSlice : 1,
@@ -170,7 +142,7 @@ export function MPRViewer({
       });
     };
 
-    const setupMPR = async () => {
+    const setup = async () => {
       try {
         setIsLoading(true);
         setError(null);
@@ -179,7 +151,6 @@ export function MPRViewer({
         await initCornerstone();
         if (isCancelled) return;
 
-        // Ensure all 4 viewport container elements have rendered dimensions
         const refs = [axialRef, sagittalRef, coronalRef, volume3dRef];
         for (const r of refs) {
           if (!r.current || r.current.clientWidth === 0 || r.current.clientHeight === 0) {
@@ -190,14 +161,12 @@ export function MPRViewer({
 
         setLoadingProgress(30);
 
-        // Initialize Rendering Engine
         let renderingEngine = getRenderingEngine(RENDERING_ENGINE_ID);
         if (!renderingEngine) {
           renderingEngine = new RenderingEngine(RENDERING_ENGINE_ID);
         }
 
-        // Configure 4 viewports (2x2)
-        const viewportInputs = [
+        renderingEngine.setViewports([
           {
             viewportId: "mpr-axial",
             type: CoreEnums.ViewportType.ORTHOGRAPHIC,
@@ -234,14 +203,12 @@ export function MPRViewer({
               background: [0.02, 0.02, 0.03] as [number, number, number],
             },
           },
-        ];
+        ]);
 
-        renderingEngine.setViewports(viewportInputs);
         if (isCancelled) return;
-
         setLoadingProgress(50);
 
-        // ToolGroup for 2D Orthographic MPR Viewports
+        // ── Tool Groups ───────────────────────────────────────────────────
         let toolGroup = ToolGroupManager.getToolGroup(MPR_TOOLGROUP_ID);
         if (!toolGroup) {
           toolGroup = ToolGroupManager.createToolGroup(MPR_TOOLGROUP_ID);
@@ -250,7 +217,6 @@ export function MPRViewer({
             toolGroup.addTool(PanTool.toolName);
             toolGroup.addTool(ZoomTool.toolName);
             toolGroup.addTool(StackScrollTool.toolName);
-
             toolGroup.setToolActive(WindowLevelTool.toolName, {
               bindings: [{ mouseButton: ToolEnums.MouseBindings.Primary }],
             });
@@ -265,14 +231,10 @@ export function MPRViewer({
             });
           }
         }
+        MPR_VIEWPORT_IDS.forEach((id) =>
+          toolGroup?.addViewport(id, RENDERING_ENGINE_ID)
+        );
 
-        if (toolGroup) {
-          toolGroup.addViewport("mpr-axial", RENDERING_ENGINE_ID);
-          toolGroup.addViewport("mpr-sagittal", RENDERING_ENGINE_ID);
-          toolGroup.addViewport("mpr-coronal", RENDERING_ENGINE_ID);
-        }
-
-        // ToolGroup for 3D Volume Viewport
         let toolGroup3D = ToolGroupManager.getToolGroup(VOLUME_3D_TOOLGROUP_ID);
         if (!toolGroup3D) {
           toolGroup3D = ToolGroupManager.createToolGroup(VOLUME_3D_TOOLGROUP_ID);
@@ -280,7 +242,6 @@ export function MPRViewer({
             toolGroup3D.addTool(TrackballRotateTool.toolName);
             toolGroup3D.addTool(PanTool.toolName);
             toolGroup3D.addTool(ZoomTool.toolName);
-
             toolGroup3D.setToolActive(TrackballRotateTool.toolName, {
               bindings: [{ mouseButton: ToolEnums.MouseBindings.Primary }],
             });
@@ -292,48 +253,44 @@ export function MPRViewer({
             });
           }
         }
-
-        if (toolGroup3D) {
-          toolGroup3D.addViewport("mpr-3d", RENDERING_ENGINE_ID);
-        }
+        toolGroup3D?.addViewport("mpr-3d", RENDERING_ENGINE_ID);
 
         setLoadingProgress(70);
 
-        // Create or get Image Volume
+        // ── CT Volume ─────────────────────────────────────────────────────
         let volume = cache.getVolume(volumeId);
         if (!volume) {
-          volume = await volumeLoader.createAndCacheVolume(volumeId, {
-            imageIds,
-          });
+          volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds });
         }
 
         if (isCancelled) return;
         setLoadingProgress(85);
 
-        // Load voxel buffer
-        volume.load(() => {});
+        volume.load(() => { });
         if (isCancelled) return;
 
-        // Attach Volume to all 4 viewports
-        await setVolumesForViewports(
-          renderingEngine,
-          [{ volumeId }],
-          ["mpr-axial", "mpr-sagittal", "mpr-coronal", "mpr-3d"]
-        );
+        await setVolumesForViewports(renderingEngine, [{ volumeId }], [
+          ...MPR_VIEWPORT_IDS,
+          "mpr-3d",
+        ]);
 
         if (isCancelled) return;
+
+        // Signal the segmentation hook that the volume is ready
+        setVolumeReady(true);
 
         const engine = getRenderingEngine(RENDERING_ENGINE_ID);
         if (!engine) return;
 
-        // Apply default WW/WL (WW: 650, WL: 1150) to all Orthographic MPR viewports
-        ["mpr-axial", "mpr-sagittal", "mpr-coronal"].forEach((id) => {
+        // Apply default window / level to the 3 orthographic viewports
+        MPR_VIEWPORT_IDS.forEach((id) => {
           const vp = engine.getViewport(id) as any;
           if (vp && typeof vp.setProperties === "function") {
             vp.setProperties({ voiRange: DEFAULT_VOI_RANGE }, volumeId);
           }
         });
 
+        // Set 3D viewport to Coronal (Anterior) and the active preset
         const vp3D = engine.getViewport("mpr-3d") as any;
         if (vp3D) {
           if (typeof vp3D.applyViewOrientation === "function") {
@@ -344,12 +301,7 @@ export function MPRViewer({
           }
         }
 
-        engine.renderViewports([
-          "mpr-axial",
-          "mpr-sagittal",
-          "mpr-coronal",
-          "mpr-3d",
-        ]);
+        engine.renderViewports([...MPR_VIEWPORT_IDS, "mpr-3d"]);
 
         updateHUD("mpr-axial", setAxialHUD);
         updateHUD("mpr-sagittal", setSagittalHUD);
@@ -365,9 +317,9 @@ export function MPRViewer({
       }
     };
 
-    void setupMPR();
+    void setup();
 
-    // Event listeners to update slice & WW/WL HUD text dynamically
+    // ── HUD event listeners ───────────────────────────────────────────────
     const onAxialChange = () => updateHUD("mpr-axial", setAxialHUD);
     const onSagittalChange = () => updateHUD("mpr-sagittal", setSagittalHUD);
     const onCoronalChange = () => updateHUD("mpr-coronal", setCoronalHUD);
@@ -383,14 +335,14 @@ export function MPRViewer({
     elCor?.addEventListener(CoreEnums.Events.CAMERA_MODIFIED, onCoronalChange);
     elCor?.addEventListener(CoreEnums.Events.VOI_MODIFIED, onCoronalChange);
 
-    // ResizeObserver on the container to resize Cornerstone when panels collapse/expand
+    // ── Resize observer ───────────────────────────────────────────────────
     const container = containerRef.current;
     let resizeObserver: ResizeObserver | null = null;
     if (container) {
       resizeObserver = new ResizeObserver(() => {
         const engine = getRenderingEngine(RENDERING_ENGINE_ID);
         if (engine) {
-          engine.resize(true, true);
+          try { engine.resize(true, true); } catch (_) { }
         }
       });
       resizeObserver.observe(container);
@@ -398,7 +350,7 @@ export function MPRViewer({
 
     return () => {
       isCancelled = true;
-      if (resizeObserver) resizeObserver.disconnect();
+      resizeObserver?.disconnect();
 
       elAxial?.removeEventListener(CoreEnums.Events.CAMERA_MODIFIED, onAxialChange);
       elAxial?.removeEventListener(CoreEnums.Events.VOI_MODIFIED, onAxialChange);
@@ -414,13 +366,12 @@ export function MPRViewer({
           engine.disableElement("mpr-sagittal");
           engine.disableElement("mpr-coronal");
           engine.disableElement("mpr-3d");
-        } catch (e) {
-          // Ignore unmount cleanup warnings
-        }
+        } catch (_) { }
       }
     };
-  }, [imageIds, seriesUid]);
+  }, [imageIds, seriesUid]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── JSX ───────────────────────────────────────────────────────────────────
   return (
     <div className="mpr-main-container" ref={containerRef}>
       {isLoading && (
@@ -432,10 +383,7 @@ export function MPRViewer({
               <span>Streaming {imageIds.length} CT slices for MPR</span>
             </div>
             <div className="mpr-progress-track">
-              <div
-                className="mpr-progress-fill"
-                style={{ width: `${loadingProgress}%` }}
-              />
+              <div className="mpr-progress-fill" style={{ width: `${loadingProgress}%` }} />
             </div>
           </div>
         </div>
@@ -453,18 +401,14 @@ export function MPRViewer({
         </div>
       )}
 
-      {/* 2x2 Viewport Grid */}
+      {/* 2×2 Viewport Grid */}
       <div className="mpr-grid">
         {/* Quadrant 1: AXIAL */}
         <div className="mpr-cell">
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">AXIAL</div>
-            <div className="mpr-hud-row">
-              Slice: {axialHUD.sliceIndex}/{axialHUD.numSlices}
-            </div>
-            <div className="mpr-hud-row">
-              WW: {axialHUD.ww} WL: {axialHUD.wl}
-            </div>
+            <div className="mpr-hud-row">Slice: {axialHUD.sliceIndex}/{axialHUD.numSlices}</div>
+            <div className="mpr-hud-row">WW: {axialHUD.ww} WL: {axialHUD.wl}</div>
           </div>
           <div ref={axialRef} className="mpr-viewport-canvas" />
         </div>
@@ -473,12 +417,8 @@ export function MPRViewer({
         <div className="mpr-cell">
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">SAGITTAL</div>
-            <div className="mpr-hud-row">
-              Slice: {sagittalHUD.sliceIndex}/{sagittalHUD.numSlices}
-            </div>
-            <div className="mpr-hud-row">
-              WW: {sagittalHUD.ww} WL: {sagittalHUD.wl}
-            </div>
+            <div className="mpr-hud-row">Slice: {sagittalHUD.sliceIndex}/{sagittalHUD.numSlices}</div>
+            <div className="mpr-hud-row">WW: {sagittalHUD.ww} WL: {sagittalHUD.wl}</div>
           </div>
           <div ref={sagittalRef} className="mpr-viewport-canvas" />
         </div>
@@ -487,17 +427,13 @@ export function MPRViewer({
         <div className="mpr-cell">
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">CORONAL</div>
-            <div className="mpr-hud-row">
-              Slice: {coronalHUD.sliceIndex}/{coronalHUD.numSlices}
-            </div>
-            <div className="mpr-hud-row">
-              WW: {coronalHUD.ww} WL: {coronalHUD.wl}
-            </div>
+            <div className="mpr-hud-row">Slice: {coronalHUD.sliceIndex}/{coronalHUD.numSlices}</div>
+            <div className="mpr-hud-row">WW: {coronalHUD.ww} WL: {coronalHUD.wl}</div>
           </div>
           <div ref={coronalRef} className="mpr-viewport-canvas" />
         </div>
 
-        {/* Quadrant 4: 3D VOLUME RENDERING - Clean HUD only, buttons moved to right sidebar */}
+        {/* Quadrant 4: 3D VOLUME — camera controls are in the right sidebar */}
         <div className="mpr-cell">
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">3D VOLUME</div>
