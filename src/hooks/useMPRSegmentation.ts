@@ -115,9 +115,12 @@ export function useMPRSegmentation(
           },
         ]);
 
+        // ── 5. Add labelmap representation to each viewport (including 3D) ─────
         await new Promise((resolve) => requestAnimationFrame(resolve));
 
-        for (const vpId of MPR_VIEWPORT_IDS) {
+        const ALL_VIEWPORT_IDS = [...MPR_VIEWPORT_IDS, "mpr-3d"];
+
+        for (const vpId of ALL_VIEWPORT_IDS) {
           try {
             await csSegmentation.addLabelmapRepresentationToViewport(vpId, [
               { segmentationId: segId },
@@ -126,10 +129,11 @@ export function useMPRSegmentation(
           } catch (_) { }
         }
 
+        // ── 6. Ensure all viewports (including 3D) have the segmentation volume actor mounted
         const engine = getRenderingEngine(RENDERING_ENGINE_ID);
         if (engine) {
           const repUID = `${segId}-${ToolEnums.SegmentationRepresentations.Labelmap}-${segId}`;
-          const missingViewports = MPR_VIEWPORT_IDS.filter((id) => {
+          const missingViewports = ALL_VIEWPORT_IDS.filter((id) => {
             const vp = engine.getViewport(id) as any;
             const actors = vp?.getActors?.() || [];
             return !actors.some((a: any) => a.referencedId === segId);
@@ -145,11 +149,12 @@ export function useMPRSegmentation(
             );
           }
 
+          // ── 7. Configure direct VTK transfer functions for all viewports
           const vtkColorTransferFunction = (await import("@kitware/vtk.js/Rendering/Core/ColorTransferFunction.js")).default;
           const vtkPiecewiseFunction = (await import("@kitware/vtk.js/Common/DataModel/PiecewiseFunction.js")).default;
           const unitDist = ctVol?.spacing ? Math.min(...ctVol.spacing) : 0.5;
 
-          MPR_VIEWPORT_IDS.forEach((id) => {
+          ALL_VIEWPORT_IDS.forEach((id) => {
             const vp = engine.getViewport(id) as any;
             if (!vp) return;
             const actors = vp.getActors?.() || [];
@@ -159,6 +164,7 @@ export function useMPRSegmentation(
               const cfun = vtkColorTransferFunction.newInstance();
               const ofun = vtkPiecewiseFunction.newInstance();
 
+              // Background is fully transparent
               cfun.addRGBPoint(0, 0, 0, 0);
               ofun.addPoint(0, 0.0);
               ofun.addPoint(0.4, 0.0);
@@ -183,7 +189,18 @@ export function useMPRSegmentation(
                 const prop = actor.getProperty();
                 prop.setRGBTransferFunction(0, cfun);
                 prop.setScalarOpacity(0, ofun);
-                prop.setInterpolationTypeToNearest();
+
+                if (id === "mpr-3d") {
+                  prop.setShade(true);
+                  prop.setAmbient(0.35);
+                  prop.setDiffuse(0.65);
+                  prop.setSpecular(0.3);
+                  prop.setSpecularPower(15.0);
+                  prop.setInterpolationTypeToLinear();
+                } else {
+                  prop.setInterpolationTypeToNearest();
+                }
+
                 if (typeof prop.setScalarOpacityUnitDistance === "function") {
                   prop.setScalarOpacityUnitDistance(0, unitDist);
                 }
@@ -193,7 +210,8 @@ export function useMPRSegmentation(
             }
           });
 
-          for (const vpId of MPR_VIEWPORT_IDS) {
+          // ── 8. Configure Cornerstone style & sync color registry
+          for (const vpId of ALL_VIEWPORT_IDS) {
             try {
               csSegmentation.config.style.setStyle(
                 { viewportId: vpId, type: ToolEnums.SegmentationRepresentations.Labelmap, segmentationId: segId },
@@ -217,12 +235,13 @@ export function useMPRSegmentation(
             }
           }
 
+          // ── 9. Fire segmentation events and trigger render on all viewports
           try {
             csSegmentation.triggerSegmentationEvents.triggerSegmentationDataModified(segId);
             csSegmentation.triggerSegmentationEvents.triggerSegmentationModified(segId);
           } catch (_) { }
 
-          engine.renderViewports([...MPR_VIEWPORT_IDS]);
+          engine.renderViewports([...ALL_VIEWPORT_IDS]);
         } else {
           console.warn("[Seg] Rendering engine not found!");
         }
@@ -234,12 +253,14 @@ export function useMPRSegmentation(
     void applySegmentation();
   }, [segData, seriesUid, volumeId, volumeReady]);
 
+  // ── Sync visibility toggle from sidebar ──────────────────────────────────
   useEffect(() => {
     if (!segmentVisibility || !seriesUid) return;
     const safeSeries = seriesUid.replace(/[^a-zA-Z0-9]/g, "_");
     const segId = `seg_${safeSeries}`;
+    const ALL_VIEWPORT_IDS = [...MPR_VIEWPORT_IDS, "mpr-3d"];
 
-    for (const vpId of MPR_VIEWPORT_IDS) {
+    for (const vpId of ALL_VIEWPORT_IDS) {
       for (const [segNumStr, visible] of Object.entries(segmentVisibility)) {
         const segNum = Number(segNumStr);
         try {
@@ -255,7 +276,7 @@ export function useMPRSegmentation(
 
     const engine = getRenderingEngine(RENDERING_ENGINE_ID);
     if (engine) {
-      MPR_VIEWPORT_IDS.forEach((id) => {
+      ALL_VIEWPORT_IDS.forEach((id) => {
         const vp = engine.getViewport(id) as any;
         if (!vp) return;
         const actors = vp.getActors?.() || [];
@@ -278,7 +299,7 @@ export function useMPRSegmentation(
         }
       });
 
-      engine.renderViewports([...MPR_VIEWPORT_IDS]);
+      engine.renderViewports([...ALL_VIEWPORT_IDS]);
     }
   }, [segmentVisibility, seriesUid]);
 }
