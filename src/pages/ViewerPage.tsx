@@ -296,7 +296,7 @@ export default function ViewerPage() {
 
       <main
         className={`viewer-layout ${isLeftSidebarOpen ? "left-open" : "left-collapsed"} ${
-          viewMode === "2d" && segData
+          segData
             ? isSegPanelOpen
               ? "with-seg-panel"
               : "with-seg-collapsed"
@@ -521,7 +521,7 @@ export default function ViewerPage() {
           </div>
         </section>
 
-        {viewMode === "2d" && segData && (
+        {segData && (
           <SegmentationPanel
             isOpen={isSegPanelOpen}
             onToggle={() => setIsSegPanelOpen((prev) => !prev)}

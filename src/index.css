@@ -1238,47 +1238,32 @@ body {
   height: 100%;
 }
 
-.mpr-badge {
+.mpr-hud-overlay {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 10px;
+  left: 10px;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 3px 8px;
-  border-radius: 4px;
+  flex-direction: column;
+  gap: 2px;
   font-family: monospace;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000;
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+}
+
+.mpr-hud-title {
   font-weight: 700;
   letter-spacing: 0.05em;
-  z-index: 10;
-  pointer-events: auto;
-  user-select: none;
-  background: rgba(10, 10, 10, 0.75);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-transform: uppercase;
 }
 
-.mpr-badge.axial {
-  color: #38bdf8;
-  border-left: 3px solid #38bdf8;
-}
-
-.mpr-badge.sagittal {
-  color: #fbbf24;
-  border-left: 3px solid #fbbf24;
-}
-
-.mpr-badge.coronal {
-  color: #34d399;
-  border-left: 3px solid #34d399;
-}
-
-.mpr-badge.volume-3d {
-  color: #f43f5e;
-  border-left: 3px solid #f43f5e;
-  max-width: calc(100% - 16px);
-  flex-wrap: wrap;
+.mpr-hud-row {
+  font-size: 0.8rem;
+  opacity: 0.95;
 }
 
 .mpr-preset-pills {
