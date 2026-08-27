@@ -38,6 +38,7 @@ interface MPRViewerProps {
   active3DPreset?: string;
   segData?: DicomSegData | null;
   segmentVisibility?: Record<number, boolean>;
+  segmentOpacity?: number;
 }
 
 interface ViewportHUDState {
@@ -53,6 +54,7 @@ export function MPRViewer({
   active3DPreset = "CT-AAA",
   segData,
   segmentVisibility,
+  segmentOpacity = 0.5,
 }: MPRViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const axialRef = useRef<HTMLDivElement>(null);
@@ -84,7 +86,7 @@ export function MPRViewer({
     setMaximizedViewport((prev) => (prev === viewportId ? null : viewportId));
   };
 
-  useMPRSegmentation(segData, segmentVisibility, seriesUid, volumeId, volumeReady);
+  useMPRSegmentation(segData, segmentVisibility, seriesUid, volumeId, volumeReady, segmentOpacity);
 
   // ── Handle resizing and render when maximized viewport toggles ───────────
   useEffect(() => {

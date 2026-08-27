@@ -140,6 +140,7 @@ export const ViewerMainViewport: React.FC<ViewerMainViewportProps> = ({
                 active3DPreset={active3DPreset}
                 segData={segData}
                 segmentVisibility={segVisibility}
+                segmentOpacity={segmentOpacity}
               />
             </div>
           </>
