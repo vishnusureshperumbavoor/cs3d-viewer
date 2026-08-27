@@ -19,7 +19,7 @@ export const STANDARD_WL_PRESETS: WLPreset[] = [
 ];
 
 export function WLPresetToolbar() {
-  const [selectedPresetId, setSelectedPresetId] = useState<string>("default");
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("custom_650_1150");
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const presetId = e.target.value;

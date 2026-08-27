@@ -360,6 +360,16 @@ export function useCornerstoneViewport({
       if (viewport) {
         await viewport.setStack(imageIds);
         if (isCancelled) return;
+
+        const defaultWW = 650;
+        const defaultWC = 1150;
+        viewport.setProperties({
+          voiRange: {
+            lower: defaultWC - defaultWW / 2,
+            upper: defaultWC + defaultWW / 2,
+          },
+        });
+
         viewport.render();
         updateVoiDisplay();
       }
