@@ -77,8 +77,30 @@ export function MPRViewer({
   const [axialHUD, setAxialHUD] = useState<ViewportHUDState>(defaultHUD(imageIds.length));
   const [sagittalHUD, setSagittalHUD] = useState<ViewportHUDState>(defaultHUD());
   const [coronalHUD, setCoronalHUD] = useState<ViewportHUDState>(defaultHUD());
+  const [maximizedViewport, setMaximizedViewport] = useState<string | null>(null);
+
+  const handleDoubleClick = (viewportId: string) => {
+    setMaximizedViewport((prev) => (prev === viewportId ? null : viewportId));
+  };
 
   useMPRSegmentation(segData, segmentVisibility, seriesUid, volumeId, volumeReady);
+
+  // ── Handle resizing and render when maximized viewport toggles ───────────
+  useEffect(() => {
+    const engine = getRenderingEngine(RENDERING_ENGINE_ID);
+    if (engine) {
+      requestAnimationFrame(() => {
+        try {
+          engine.resize(true, true);
+          if (maximizedViewport) {
+            engine.renderViewport(maximizedViewport);
+          } else {
+            engine.renderViewports([...MPR_VIEWPORT_IDS, "mpr-3d"]);
+          }
+        } catch (_) { }
+      });
+    }
+  }, [maximizedViewport]);
 
   useEffect(() => {
     if (!active3DPreset) return;
@@ -401,10 +423,13 @@ export function MPRViewer({
         </div>
       )}
 
-      {/* 2×2 Viewport Grid */}
-      <div className="mpr-grid">
+      {/* 2×2 Viewport Grid (or Fullscreen on Double Click) */}
+      <div className={`mpr-grid ${maximizedViewport ? "maximized" : ""}`}>
         {/* Quadrant 1: AXIAL */}
-        <div className="mpr-cell">
+        <div
+          className={`mpr-cell ${maximizedViewport === "mpr-axial" ? "is-maximized" : maximizedViewport ? "is-hidden" : ""}`}
+          onDoubleClick={() => handleDoubleClick("mpr-axial")}
+        >
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">AXIAL</div>
             <div className="mpr-hud-row">Slice: {axialHUD.sliceIndex}/{axialHUD.numSlices}</div>
@@ -414,7 +439,10 @@ export function MPRViewer({
         </div>
 
         {/* Quadrant 2: SAGITTAL */}
-        <div className="mpr-cell">
+        <div
+          className={`mpr-cell ${maximizedViewport === "mpr-sagittal" ? "is-maximized" : maximizedViewport ? "is-hidden" : ""}`}
+          onDoubleClick={() => handleDoubleClick("mpr-sagittal")}
+        >
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">SAGITTAL</div>
             <div className="mpr-hud-row">Slice: {sagittalHUD.sliceIndex}/{sagittalHUD.numSlices}</div>
@@ -424,7 +452,10 @@ export function MPRViewer({
         </div>
 
         {/* Quadrant 3: CORONAL */}
-        <div className="mpr-cell">
+        <div
+          className={`mpr-cell ${maximizedViewport === "mpr-coronal" ? "is-maximized" : maximizedViewport ? "is-hidden" : ""}`}
+          onDoubleClick={() => handleDoubleClick("mpr-coronal")}
+        >
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">CORONAL</div>
             <div className="mpr-hud-row">Slice: {coronalHUD.sliceIndex}/{coronalHUD.numSlices}</div>
@@ -433,8 +464,11 @@ export function MPRViewer({
           <div ref={coronalRef} className="mpr-viewport-canvas" />
         </div>
 
-        {/* Quadrant 4: 3D VOLUME — camera controls are in the right sidebar */}
-        <div className="mpr-cell">
+        {/* Quadrant 4: 3D VOLUME */}
+        <div
+          className={`mpr-cell ${maximizedViewport === "mpr-3d" ? "is-maximized" : maximizedViewport ? "is-hidden" : ""}`}
+          onDoubleClick={() => handleDoubleClick("mpr-3d")}
+        >
           <div className="mpr-hud-overlay">
             <div className="mpr-hud-title">3D VOLUME</div>
           </div>
