@@ -69,10 +69,21 @@ export const useStudyImages = () => {
     };
   }, [studyInstanceUid]);
 
+  const refetch = async () => {
+    if (!studyInstanceUid) return;
+    try {
+      const updatedInstances = await fetchStudyInstances(DEFAULT_WADO_BASE, studyInstanceUid);
+      const ids = mapInstancesToImageIds(updatedInstances);
+      setImageIds(ids);
+      setInstances(updatedInstances);
+    } catch (_) { }
+  };
+
   return {
     imageIds,
     instances,
     loading,
     error,
+    refetch,
   };
 };

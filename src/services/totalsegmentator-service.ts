@@ -8,10 +8,11 @@ export interface SegmentationResult {
 
 export const totalsegmentatorService = {
     /**
-     * Triggers TotalSegmentator run on FastAPI, downloads the resulting SEG file from Orthanc,
-     * parses it, and maps it to coordinates and structures.
+     * Triggers TotalSegmentator on FastAPI backend.
+     * The backend runs TotalSegmentator, generates the DICOM SEG file,
+     * uploads it to Orthanc, and returns the instanceId and seriesInstanceUid.
      */
-    run: async (studyInstanceUid: string, seriesInstanceUid: string): Promise<SegmentationResult> => {
+    run: async (studyInstanceUid: string, seriesInstanceUid: string): Promise<{ instanceId: string; seriesInstanceUid: string }> => {
         const response = await fetch("http://localhost:8000/api/segment/total", {
             method: "POST",
             headers: {
@@ -33,37 +34,9 @@ export const totalsegmentatorService = {
         }
 
         const data = await response.json();
-        const { instanceId } = data;
-
-        // Download generated SEG
-        const fileResponse = await fetch(`/instances/${instanceId}/file`);
-        if (!fileResponse.ok) {
-            throw new Error("Failed to download generated DICOM SEG from Orthanc.");
-        }
-
-        const buffer = await fileResponse.arrayBuffer();
-        const uint8 = new Uint8Array(buffer);
-        let binary = "";
-        for (let i = 0; i < uint8.length; i++) {
-            binary += String.fromCharCode(uint8[i]);
-        }
-        const base64 = btoa(binary);
-        const dataUrl = `data:application/octet-stream;base64,${base64}`;
-
-        // Parse SEG
-        const parsedLabelmaps = await parseSeg(dataUrl);
-        const dataset = (window as any).lastParsedSegDataset;
-        const info = extractSegmentationInfo(dataset, parsedLabelmaps);
-
-        const segmentVisibility: Record<number, boolean> = {};
-        info.forEach((s: any) => {
-            segmentVisibility[s.segment_number] = true;
-        });
-
         return {
-            parsedLabelmaps,
-            segStructures: info,
-            segmentVisibility,
+            instanceId: data.instanceId,
+            seriesInstanceUid: data.seriesInstanceUid,
         };
     },
 

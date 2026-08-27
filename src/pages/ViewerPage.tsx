@@ -16,7 +16,7 @@ import { totalsegmentatorService } from "../services/totalsegmentator-service";
 import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
 
 export default function ViewerPage() {
-  const { instances, error } = useStudyImages();
+  const { instances, error, refetch } = useStudyImages();
 
   const seriesMap = useMemo(() => {
     const map = new Map<string, typeof instances>();
@@ -64,43 +64,61 @@ export default function ViewerPage() {
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
 
   // Auto-detected DICOM SEG state
-  const segInstance = useMemo(() => dicomSegService.findSegInstance(instances), [instances]);
-  const [segData, setSegData] = useState<DicomSegData | null>(null);
+  const segInstances = useMemo(() => dicomSegService.findSegInstances(instances), [instances]);
+  const [segDataMap, setSegDataMap] = useState<Record<string, DicomSegData>>({});
+  const [activeSegSeriesUid, setActiveSegSeriesUid] = useState<string | null>(null);
   const [isLoadingSeg, setIsLoadingSeg] = useState(false);
   const [isSegPanelOpen, setIsSegPanelOpen] = useState(true);
   const [segmentOpacity, setSegmentOpacity] = useState(0.5);
   const [segVisibility, setSegVisibility] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    if (!segInstance) return;
+    if (segInstances.length === 0) return;
 
     let isCancelled = false;
     setIsLoadingSeg(true);
 
-    dicomSegService
-      .loadStudySegmentation(segInstance)
-      .then((data) => {
-        if (!isCancelled) {
-          setSegData(data);
-          const initialVis: Record<number, boolean> = {};
-          data.segments.forEach((s) => {
-            initialVis[s.segmentNumber] = true;
-          });
-          setSegVisibility(initialVis);
-          setIsSegPanelOpen(true);
-        }
-      })
-      .catch((err) => {
-        console.warn("Failed to load study segmentation:", err);
-      })
-      .finally(() => {
-        if (!isCancelled) setIsLoadingSeg(false);
-      });
+    const loadAllSegs = async () => {
+      await Promise.all(
+        segInstances.map(async (inst) => {
+          try {
+            const data = await dicomSegService.loadStudySegmentation(inst);
+            if (!isCancelled) {
+              setSegDataMap((prev) => ({
+                ...prev,
+                [inst.seriesInstanceUid]: data,
+              }));
+              setActiveSegSeriesUid((prev) => prev || inst.seriesInstanceUid);
+            }
+          } catch (err) {
+            console.warn("Failed to load segmentation series:", inst.seriesInstanceUid, err);
+          }
+        })
+      );
+      if (!isCancelled) {
+        setIsLoadingSeg(false);
+      }
+    };
+
+    void loadAllSegs();
 
     return () => {
       isCancelled = true;
     };
-  }, [segInstance]);
+  }, [segInstances]);
+
+  const segData = activeSegSeriesUid ? segDataMap[activeSegSeriesUid] : (Object.values(segDataMap)[0] || null);
+
+  useEffect(() => {
+    if (segData) {
+      const initialVis: Record<number, boolean> = {};
+      segData.segments.forEach((s) => {
+        initialVis[s.segmentNumber] = true;
+      });
+      setSegVisibility(initialVis);
+      setIsSegPanelOpen(true);
+    }
+  }, [segData]);
 
   // States for TotalSegmentator and 3D View
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
@@ -132,8 +150,6 @@ export default function ViewerPage() {
 
   const [isSegmentingTotal, setIsSegmentingTotal] = useState(false);
   const [totalSegError, setTotalSegError] = useState<string | null>(null);
-  const [_segLabelmaps, setSegLabelmaps] = useState<any[] | null>(null);
-  const [_segStructures, setSegStructures] = useState<any[] | null>(null);
 
   // Set default selected series once seriesList is loaded (pick first non-SEG image series)
   useEffect(() => {
@@ -169,17 +185,14 @@ export default function ViewerPage() {
     setIsSegmentingTotal(true);
     setTotalSegError(null);
     try {
-      const result = await totalsegmentatorService.run(
+      await totalsegmentatorService.run(
         patientDetails?.studyInstanceUid || "",
         selectedSeriesUid
       );
-      setSegLabelmaps(result.parsedLabelmaps);
-      setSegStructures(result.segStructures);
-      setSegVisibility(result.segmentVisibility);
-      setViewMode("3d");
+      await refetch();
     } catch (err: any) {
-      console.error(err);
-      setTotalSegError(err.message || "An unexpected error occurred.");
+      console.error("TotalSegmentator run failed:", err);
+      setTotalSegError(err.message || "An unexpected error occurred during TotalSegmentator execution.");
     } finally {
       setIsSegmentingTotal(false);
     }
@@ -369,46 +382,60 @@ export default function ViewerPage() {
               </div>
 
               <div className="series-list">
-                {seriesList.map((series) => {
-                  const isSegSeries = series.modality === "SEG";
-                  const isSelected = selectedSeriesUid === series.seriesUid;
+                {seriesList
+                  .filter((series) => {
+                    if (series.modality === "SEG") {
+                      return Boolean(segDataMap[series.seriesUid]);
+                    }
+                    return true;
+                  })
+                  .map((series) => {
+                    const isSegSeries = series.modality === "SEG";
+                    const isSelected = isSegSeries
+                      ? activeSegSeriesUid === series.seriesUid
+                      : selectedSeriesUid === series.seriesUid;
+                    const parsedSeg = segDataMap[series.seriesUid];
 
-                  return (
-                    <button
-                      key={series.seriesUid}
-                      className={`series-card ${isSegSeries ? "seg-series-card" : ""} ${isSelected ? "active" : ""
-                        }`}
-                      onClick={() => {
-                        setSelectedSeriesUid(series.seriesUid);
-                      }}
-                      title={series.seriesDescription}
-                    >
-                      {isSegSeries ? (
-                        <div className="series-thumbnail-container seg-thumb-container">
-                          <span style={{ fontSize: "1.85rem" }} role="img" aria-label="Segmentation">
-                            🧬
+                    return (
+                      <button
+                        key={series.seriesUid}
+                        className={`series-card ${isSegSeries ? "seg-series-card" : ""} ${isSelected ? "active" : ""
+                          }`}
+                        onClick={() => {
+                          if (isSegSeries) {
+                            setActiveSegSeriesUid(series.seriesUid);
+                          } else {
+                            setSelectedSeriesUid(series.seriesUid);
+                          }
+                        }}
+                        title={series.seriesDescription}
+                      >
+                        {isSegSeries ? (
+                          <div className="series-thumbnail-container seg-thumb-container">
+                            <span style={{ fontSize: "1.85rem" }} role="img" aria-label="Segmentation">
+                              🧬
+                            </span>
+                          </div>
+                        ) : (
+                          <SeriesThumbnail imageId={series.thumbnailImageId} />
+                        )}
+
+                        <div className="series-info">
+                          <span className={`series-modality ${isSegSeries ? "seg-modality-badge" : ""}`}>
+                            {series.modality}
+                          </span>
+                          <span className="series-desc" title={series.seriesDescription}>
+                            {isSegSeries ? series.seriesDescription || "Segmentation" : series.seriesDescription}
+                          </span>
+                          <span className="series-count">
+                            {isSegSeries
+                              ? `${parsedSeg?.segments.length} Segments`
+                              : `${series.instanceCount} images`}
                           </span>
                         </div>
-                      ) : (
-                        <SeriesThumbnail imageId={series.thumbnailImageId} />
-                      )}
-
-                      <div className="series-info">
-                        <span className={`series-modality ${isSegSeries ? "seg-modality-badge" : ""}`}>
-                          {series.modality}
-                        </span>
-                        <span className="series-desc" title={series.seriesDescription}>
-                          {isSegSeries ? "Segmentation" : series.seriesDescription}
-                        </span>
-                        <span className="series-count">
-                          {isSegSeries
-                            ? `${segData?.segments.length || 2} Segments`
-                            : `${series.instanceCount} images`}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  })}
               </div>
             </aside>
           ) : (

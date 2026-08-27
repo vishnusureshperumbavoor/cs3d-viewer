@@ -45,6 +45,17 @@ export const dicomSegService = {
   },
 
   /**
+   * Finds all DICOM SEG instances within a list of study instances.
+   */
+  findSegInstances: (instances: DicomWebInstance[]): DicomWebInstance[] => {
+    return instances.filter(
+      (inst) =>
+        inst.modality === "SEG" ||
+        inst.sopClassUid === "1.2.840.10008.5.1.4.1.1.66.4"
+    );
+  },
+
+  /**
    * Fetches the raw DICOM SEG file from Orthanc and parses it into 2D slice masks.
    */
   loadStudySegmentation: async (segInstance: DicomWebInstance): Promise<DicomSegData> => {
