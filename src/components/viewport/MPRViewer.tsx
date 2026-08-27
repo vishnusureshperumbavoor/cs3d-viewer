@@ -27,6 +27,7 @@ import {
   DEFAULT_WL,
   DEFAULT_VOI_RANGE,
   MPR_VIEWPORT_IDS,
+  apply3DVolumePreset,
 } from "../../utils/mpr-utils";
 
 export { resetMPRCameras } from "../../utils/mpr-utils";
@@ -104,19 +105,12 @@ export function MPRViewer({
 
   useEffect(() => {
     if (!active3DPreset) return;
-    try {
-      const engine = getRenderingEngine(RENDERING_ENGINE_ID);
-      if (engine) {
-        const vp3D = engine.getViewport("mpr-3d") as any;
-        if (vp3D && typeof vp3D.setPreset === "function") {
-          vp3D.setPreset(active3DPreset);
-          vp3D.render();
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to set 3D volume preset:", e);
+    const engine = getRenderingEngine(RENDERING_ENGINE_ID);
+    const vp3D = engine?.getViewport("mpr-3d");
+    if (vp3D) {
+      apply3DVolumePreset(vp3D, active3DPreset, volumeId);
     }
-  }, [active3DPreset]);
+  }, [active3DPreset, volumeId]);
 
   useEffect(() => {
     if (!imageIds || imageIds.length === 0 || !seriesUid) {

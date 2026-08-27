@@ -3,6 +3,21 @@ import { DicomSegData, SegmentStructure } from "../../services/dicom-seg-service
 
 export const VOLUME_PRESETS = [
   {
+    id: "CT-Segmentation-Only",
+    label: "3D Seg Only",
+    desc: "Isolated 3D organ & tumor surface meshes (pure 3D model)",
+  },
+  {
+    id: "CT-Ghost-Body",
+    label: "Transparent Body",
+    desc: "Semi-transparent body envelope with 3D organ meshes inside",
+  },
+  {
+    id: "CT-Bone",
+    label: "Bone",
+    desc: "Skeletal system, vertebrae, ribs, and high-density calcium",
+  },
+  {
     id: "CT-AAA",
     label: "Angio",
     desc: "Aortic & renal angiography with contrast vessel isolation",
@@ -11,11 +26,6 @@ export const VOLUME_PRESETS = [
     id: "CT-Chest-Vessels",
     label: "Vessels",
     desc: "Thoracic and abdominal vasculature with organ silhouettes",
-  },
-  {
-    id: "CT-Bone",
-    label: "Bone",
-    desc: "Skeletal system, vertebrae, ribs, and high-density calcium",
   },
   {
     id: "CT-Soft-Tissue",

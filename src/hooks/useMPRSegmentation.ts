@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   getRenderingEngine,
   volumeLoader,
@@ -9,22 +9,22 @@ import {
   Enums as ToolEnums,
 } from "@cornerstonejs/tools";
 import type { DicomSegData } from "../services/dicom-seg-service";
+import { polysegServices } from "../services/polyseg-services";
+import vtkActor from "@kitware/vtk.js/Rendering/Core/Actor";
+import vtkMapper from "@kitware/vtk.js/Rendering/Core/Mapper";
+import vtkPolyData from "@kitware/vtk.js/Common/DataModel/PolyData";
+import vtkPoints from "@kitware/vtk.js/Common/Core/Points";
+import vtkCellArray from "@kitware/vtk.js/Common/Core/CellArray";
+import type { LabelmapData } from "../types/common";
 import {
   RENDERING_ENGINE_ID,
   MPR_VIEWPORT_IDS,
 } from "../utils/mpr-utils";
 
 /**
- * Applies a DICOM SEG labelmap onto the 3 MPR viewports (Axial / Sagittal / Coronal).
- *
- * Key implementation detail (confirmed from Cornerstone source):
- *   `createAndCacheDerivedVolume` IGNORES the `scalarData` option — it only uses
- *   `targetBuffer` and `voxelRepresentation`. The correct flow is:
- *     1. Build the flat Uint8Array from sliceMaskMap FIRST.
- *     2. Create the derived volume (gets empty zeroed buffers).
- *     3. Write data in via `voxelManager.setCompleteScalarDataArray()`.
- *     4. Call `modified()` to invalidate the GPU texture.
- *     5. Register with the segmentation system and add representations.
+ * Applies a DICOM SEG labelmap:
+ * - 3 MPR orthographic views: Volume Labelmap with uniform 0.85 opacity.
+ * - 3D Volume Viewport: Smooth Marching Cubes Surface Meshes (VTK PolyData) for perfect 3D anatomy.
  */
 export function useMPRSegmentation(
   segData: DicomSegData | null | undefined,
@@ -33,6 +33,8 @@ export function useMPRSegmentation(
   volumeId: string,
   volumeReady: boolean
 ) {
+  const surfaceActorsRef = useRef<Record<number, any>>({});
+
   useEffect(() => {
     if (!segData || segData.sliceMaskMap.size === 0 || !seriesUid || !volumeReady) return;
 
@@ -41,11 +43,23 @@ export function useMPRSegmentation(
 
     const applySegmentation = async () => {
       try {
+        // Cleanup prior labelmap registration
         try { csSegmentation.removeSegmentation(segId); } catch (_) { }
         try {
           const { cache } = await import("@cornerstonejs/core");
           cache.removeVolumeLoadObject(segId);
         } catch (_) { }
+
+        // Cleanup prior 3D surface mesh actors
+        const engine = getRenderingEngine(RENDERING_ENGINE_ID);
+        const vp3D = engine?.getViewport("mpr-3d") as any;
+        const renderer3D = vp3D?.getRenderer?.();
+        if (renderer3D) {
+          Object.values(surfaceActorsRef.current).forEach((actor) => {
+            try { renderer3D.removeActor(actor); } catch (_) { }
+          });
+        }
+        surfaceActorsRef.current = {};
 
         const { cache } = await import("@cornerstonejs/core");
         const ctVol = cache.getVolume(volumeId) as any;
@@ -84,6 +98,7 @@ export function useMPRSegmentation(
           console.warn("[Seg] No slices matched — SOP UID mismatch?");
         }
 
+        // ── 1. Create derived labelmap volume for 2D MPR planes ─────────
         const labelmapVol = volumeLoader.createAndCacheDerivedLabelmapVolume(
           volumeId,
           { volumeId: segId }
@@ -115,12 +130,10 @@ export function useMPRSegmentation(
           },
         ]);
 
-        // ── 5. Add labelmap representation to each viewport (including 3D) ─────
+        // ── 2. Add labelmap representation to the 3 MPR viewports ────────
         await new Promise((resolve) => requestAnimationFrame(resolve));
 
-        const ALL_VIEWPORT_IDS = [...MPR_VIEWPORT_IDS, "mpr-3d"];
-
-        for (const vpId of ALL_VIEWPORT_IDS) {
+        for (const vpId of MPR_VIEWPORT_IDS) {
           try {
             await csSegmentation.addLabelmapRepresentationToViewport(vpId, [
               { segmentationId: segId },
@@ -129,11 +142,9 @@ export function useMPRSegmentation(
           } catch (_) { }
         }
 
-        // ── 6. Ensure all viewports (including 3D) have the segmentation volume actor mounted
-        const engine = getRenderingEngine(RENDERING_ENGINE_ID);
         if (engine) {
           const repUID = `${segId}-${ToolEnums.SegmentationRepresentations.Labelmap}-${segId}`;
-          const missingViewports = ALL_VIEWPORT_IDS.filter((id) => {
+          const missingViewports = MPR_VIEWPORT_IDS.filter((id) => {
             const vp = engine.getViewport(id) as any;
             const actors = vp?.getActors?.() || [];
             return !actors.some((a: any) => a.referencedId === segId);
@@ -149,12 +160,12 @@ export function useMPRSegmentation(
             );
           }
 
-          // ── 7. Configure direct VTK transfer functions for all viewports
+          // ── 3. Configure direct VTK transfer functions for 3 MPR viewports
           const vtkColorTransferFunction = (await import("@kitware/vtk.js/Rendering/Core/ColorTransferFunction.js")).default;
           const vtkPiecewiseFunction = (await import("@kitware/vtk.js/Common/DataModel/PiecewiseFunction.js")).default;
           const unitDist = ctVol?.spacing ? Math.min(...ctVol.spacing) : 0.5;
 
-          ALL_VIEWPORT_IDS.forEach((id) => {
+          MPR_VIEWPORT_IDS.forEach((id) => {
             const vp = engine.getViewport(id) as any;
             if (!vp) return;
             const actors = vp.getActors?.() || [];
@@ -164,7 +175,6 @@ export function useMPRSegmentation(
               const cfun = vtkColorTransferFunction.newInstance();
               const ofun = vtkPiecewiseFunction.newInstance();
 
-              // Background is fully transparent
               cfun.addRGBPoint(0, 0, 0, 0);
               ofun.addPoint(0, 0.0);
               ofun.addPoint(0.4, 0.0);
@@ -189,17 +199,7 @@ export function useMPRSegmentation(
                 const prop = actor.getProperty();
                 prop.setRGBTransferFunction(0, cfun);
                 prop.setScalarOpacity(0, ofun);
-
-                if (id === "mpr-3d") {
-                  prop.setShade(true);
-                  prop.setAmbient(0.35);
-                  prop.setDiffuse(0.65);
-                  prop.setSpecular(0.3);
-                  prop.setSpecularPower(15.0);
-                  prop.setInterpolationTypeToLinear();
-                } else {
-                  prop.setInterpolationTypeToNearest();
-                }
+                prop.setInterpolationTypeToNearest();
 
                 if (typeof prop.setScalarOpacityUnitDistance === "function") {
                   prop.setScalarOpacityUnitDistance(0, unitDist);
@@ -210,8 +210,8 @@ export function useMPRSegmentation(
             }
           });
 
-          // ── 8. Configure Cornerstone style & sync color registry
-          for (const vpId of ALL_VIEWPORT_IDS) {
+          // Configure Cornerstone style & sync color registry for MPR
+          for (const vpId of MPR_VIEWPORT_IDS) {
             try {
               csSegmentation.config.style.setStyle(
                 { viewportId: vpId, type: ToolEnums.SegmentationRepresentations.Labelmap, segmentationId: segId },
@@ -235,15 +235,90 @@ export function useMPRSegmentation(
             }
           }
 
-          // ── 9. Fire segmentation events and trigger render on all viewports
           try {
             csSegmentation.triggerSegmentationEvents.triggerSegmentationDataModified(segId);
             csSegmentation.triggerSegmentationEvents.triggerSegmentationModified(segId);
           } catch (_) { }
 
-          engine.renderViewports([...ALL_VIEWPORT_IDS]);
-        } else {
-          console.warn("[Seg] Rendering engine not found!");
+          engine.renderViewports([...MPR_VIEWPORT_IDS]);
+        }
+
+        // ── 4. Generate smooth 3D Surface Meshes for 3D Viewport ─────────
+        if (vp3D) {
+          for (const seg of segData.segments) {
+            const segNum = seg.segmentNumber;
+            const binaryData = new Uint8Array(scalarData.length);
+            let segVoxels = 0;
+            for (let i = 0; i < scalarData.length; i++) {
+              if (scalarData[i] === segNum) {
+                binaryData[i] = 1;
+                segVoxels++;
+              }
+            }
+
+            console.log(`[3D Seg] Segment ${segNum} (${seg.label}): ${segVoxels} voxels`);
+            if (segVoxels === 0) continue;
+
+            const labelmapData: LabelmapData = {
+              data: binaryData,
+              dimensions: Array.from(ctVol.dimensions) as [number, number, number],
+              spacing: Array.from(ctVol.spacing) as [number, number, number],
+              direction: Array.from(ctVol.direction) as [number, number, number, number, number, number, number, number, number],
+              origin: Array.from(ctVol.origin) as [number, number, number],
+              isovalues: [0.5],
+            };
+
+            try {
+              console.log(`[3D Seg] Requesting Marching Cubes surface mesh for segment ${segNum}...`);
+              const surface = await polysegServices.convertLabelmapToSurface(labelmapData);
+              console.log(`[3D Seg] Surface received for segment ${segNum}: ${surface.points.length / 3} vertices, ${surface.polys.length} poly indices`);
+
+              const polyData = vtkPolyData.newInstance();
+              const points = vtkPoints.newInstance();
+              points.setData(surface.points);
+              polyData.setPoints(points);
+
+              const polys = vtkCellArray.newInstance();
+              polys.setData(surface.polys);
+              polyData.setPolys(polys);
+
+              const mapper = vtkMapper.newInstance();
+              mapper.setInputData(polyData);
+
+              const actor = vtkActor.newInstance();
+              actor.setMapper(mapper);
+
+              const [r, g, b] = seg.rgba;
+              const prop = actor.getProperty();
+              prop.setColor(r / 255, g / 255, b / 255);
+              prop.setOpacity(0.85);
+              prop.setAmbient(0.35);
+              prop.setDiffuse(0.65);
+              prop.setSpecular(0.3);
+              prop.setSpecularPower(20.0);
+
+              const isVis = segmentVisibility ? (segmentVisibility[segNum] ?? true) : true;
+              actor.setVisibility(isVis);
+
+              const actorUid = `surf_seg_${segNum}_${safeSeries}`;
+              try {
+                if (typeof vp3D.addActors === "function") {
+                  vp3D.addActors([{ uid: actorUid, actor }]);
+                } else if (typeof vp3D.getRenderer === "function") {
+                  vp3D.getRenderer().addActor(actor);
+                }
+              } catch (_) {
+                vp3D.getRenderer?.()?.addActor(actor);
+              }
+
+              surfaceActorsRef.current[segNum] = { actor, uid: actorUid };
+              console.log(`[3D Seg] Actor mounted for segment ${segNum} ✓`);
+            } catch (err) {
+              console.error(`[3D Seg] Failed to generate smooth 3D surface for segment ${segNum}:`, err);
+            }
+          }
+          vp3D.render();
+          console.log("[3D Seg] vp3D rendered ✓");
         }
       } catch (err) {
         console.error("MPR segmentation overlay failed:", err);
@@ -251,6 +326,23 @@ export function useMPRSegmentation(
     };
 
     void applySegmentation();
+
+    return () => {
+      const eng = getRenderingEngine(RENDERING_ENGINE_ID);
+      const vp = eng?.getViewport("mpr-3d") as any;
+      if (vp) {
+        Object.values(surfaceActorsRef.current).forEach(({ actor, uid }: any) => {
+          try {
+            if (typeof vp.removeActors === "function" && uid) {
+              vp.removeActors([uid]);
+            } else if (typeof vp.getRenderer === "function") {
+              vp.getRenderer().removeActor(actor);
+            }
+          } catch (_) { }
+        });
+      }
+      surfaceActorsRef.current = {};
+    };
   }, [segData, seriesUid, volumeId, volumeReady]);
 
   // ── Sync visibility toggle from sidebar ──────────────────────────────────
@@ -258,9 +350,9 @@ export function useMPRSegmentation(
     if (!segmentVisibility || !seriesUid) return;
     const safeSeries = seriesUid.replace(/[^a-zA-Z0-9]/g, "_");
     const segId = `seg_${safeSeries}`;
-    const ALL_VIEWPORT_IDS = [...MPR_VIEWPORT_IDS, "mpr-3d"];
 
-    for (const vpId of ALL_VIEWPORT_IDS) {
+    // 1. Update MPR orthographic viewports
+    for (const vpId of MPR_VIEWPORT_IDS) {
       for (const [segNumStr, visible] of Object.entries(segmentVisibility)) {
         const segNum = Number(segNumStr);
         try {
@@ -276,7 +368,7 @@ export function useMPRSegmentation(
 
     const engine = getRenderingEngine(RENDERING_ENGINE_ID);
     if (engine) {
-      ALL_VIEWPORT_IDS.forEach((id) => {
+      MPR_VIEWPORT_IDS.forEach((id) => {
         const vp = engine.getViewport(id) as any;
         if (!vp) return;
         const actors = vp.getActors?.() || [];
@@ -299,7 +391,19 @@ export function useMPRSegmentation(
         }
       });
 
-      engine.renderViewports([...ALL_VIEWPORT_IDS]);
+      engine.renderViewports([...MPR_VIEWPORT_IDS]);
+
+      // 2. Update 3D smooth surface mesh actors
+      for (const [segNumStr, visible] of Object.entries(segmentVisibility)) {
+        const segNum = Number(segNumStr);
+        const actor = surfaceActorsRef.current[segNum];
+        if (actor) {
+          actor.setVisibility(visible);
+        }
+      }
+
+      const vp3D = engine.getViewport("mpr-3d") as any;
+      vp3D?.render?.();
     }
   }, [segmentVisibility, seriesUid]);
 }
