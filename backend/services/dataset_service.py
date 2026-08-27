@@ -6,7 +6,8 @@ import tempfile
 import zipfile
 import requests
 from typing import Generator, Dict, Any
-from core.config import SAMPLE_DATASET_URL
+from huggingface_hub import snapshot_download
+from core.config import HF_REPO_ID, HF_STUDY_FOLDER
 from services.orthanc_client import orthanc_client
 
 class DatasetService:
@@ -38,70 +39,41 @@ class DatasetService:
         return {"exists": False, "studyInstanceUid": None}
 
     def generate_sample_import_stream(self) -> Generator[str, None, None]:
-        """Streams download from Hugging Face, extracts DICOM slices, and uploads to Orthanc with SSE progress."""
-        temp_dir = tempfile.mkdtemp()
-        zip_path = os.path.join(temp_dir, "dataset.zip")
-        extract_dir = os.path.join(temp_dir, "slices")
-        os.makedirs(extract_dir, exist_ok=True)
-
+        """Downloads the study folder from Hugging Face and uploads all DICOM series into Orthanc with SSE progress."""
         try:
-            yield f"data: {json.dumps({'stage': 'starting', 'progress': 0, 'message': 'Connecting to Hugging Face...'})}\n\n"
+            yield f"data: {json.dumps({'stage': 'starting', 'progress': 10, 'message': 'Connecting to Hugging Face repository...'})}\n\n"
 
-            # 1. Stream download from Hugging Face
-            response = requests.get(SAMPLE_DATASET_URL, stream=True, timeout=60)
-            response.raise_for_status()
+            # 1. Download study folder from Hugging Face Hub
+            yield f"data: {json.dumps({'stage': 'downloading', 'progress': 30, 'message': f'Downloading folder {HF_STUDY_FOLDER} from Hugging Face...'})}\n\n"
+            
+            hf_token = os.getenv("HF_TOKEN")
+            token_arg = hf_token if hf_token and "your_huggingface" not in hf_token else None
 
-            total_bytes = int(response.headers.get("content-length", 0))
-            if total_bytes <= 0:
-                total_bytes = 113 * 1024 * 1024  # fallback estimate ~113MB
+            downloaded_dir = snapshot_download(
+                repo_id=HF_REPO_ID,
+                repo_type="dataset",
+                allow_patterns=f"{HF_STUDY_FOLDER}/**",
+                token=token_arg
+            )
 
-            downloaded_bytes = 0
-            chunk_size = 128 * 1024
-            last_yield_time = time.time()
+            target_folder = os.path.join(downloaded_dir, HF_STUDY_FOLDER)
+            if not os.path.exists(target_folder):
+                target_folder = downloaded_dir
 
-            with open(zip_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=chunk_size):
-                    if chunk:
-                        f.write(chunk)
-                        downloaded_bytes += len(chunk)
-                        now = time.time()
-                        if now - last_yield_time > 0.15 or downloaded_bytes >= total_bytes:
-                            last_yield_time = now
-                            pct = min(88, int((downloaded_bytes / total_bytes) * 88))
-                            downloaded_mb = round(downloaded_bytes / (1024 * 1024), 1)
-                            total_mb = round(total_bytes / (1024 * 1024), 1)
-                            payload = {
-                                "stage": "downloading",
-                                "progress": pct,
-                                "downloadedMb": downloaded_mb,
-                                "totalMb": total_mb,
-                                "message": f"Downloading {downloaded_mb}MB / {total_mb}MB ({pct}%)",
-                            }
-                            yield f"data: {json.dumps(payload)}\n\n"
-
-            # 2. Extract ZIP
-            yield f"data: {json.dumps({'stage': 'extracting', 'progress': 90, 'message': 'Extracting DICOM slices...'})}\n\n"
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                for member in zip_ref.infolist():
-                    fname = os.path.basename(member.filename)
-                    if fname and not fname.startswith(".") and not fname.startswith("__MACOSX"):
-                        target_file = os.path.join(extract_dir, fname)
-                        with zip_ref.open(member) as source, open(target_file, "wb") as target:
-                            shutil.copyfileobj(source, target)
-
-            slice_files = [
-                os.path.join(extract_dir, f)
-                for f in os.listdir(extract_dir)
-                if os.path.isfile(os.path.join(extract_dir, f)) and not f.startswith(".")
-            ]
+            # 2. Collect all DICOM files in the downloaded directory tree
+            slice_files = []
+            for root, _, files in os.walk(target_folder):
+                for f in sorted(files):
+                    if not f.startswith(".") and (f.endswith(".dcm") or ".dcm" in f or not os.path.splitext(f)[1]):
+                        slice_files.append(os.path.join(root, f))
 
             total_slices = len(slice_files)
             if total_slices == 0:
-                raise Exception("No DICOM slice files found in downloaded zip.")
+                raise Exception(f"No DICOM files found in downloaded study folder {HF_STUDY_FOLDER}.")
 
-            yield f"data: {json.dumps({'stage': 'ingesting', 'progress': 92, 'message': f'Ingesting {total_slices} slices into Orthanc...'})}\n\n"
+            yield f"data: {json.dumps({'stage': 'ingesting', 'progress': 55, 'message': f'Ingesting {total_slices} DICOM files into Orthanc...'})}\n\n"
 
-            # 3. Upload each slice to Orthanc
+            # 3. Upload each slice / segmentation to Orthanc
             study_instance_uid = None
             for idx, slice_path in enumerate(slice_files):
                 with open(slice_path, "rb") as sf:
@@ -115,21 +87,19 @@ class DatasetService:
                                 study_info = orthanc_client.get_study_info(parent_study_id)
                                 study_instance_uid = study_info.get("MainDicomTags", {}).get("StudyInstanceUID")
 
-                ingest_pct = 92 + int(((idx + 1) / total_slices) * 8)
+                ingest_pct = 55 + int(((idx + 1) / total_slices) * 44)
                 if idx % 10 == 0 or idx == total_slices - 1:
                     payload = {
                         "stage": "ingesting",
                         "progress": ingest_pct,
-                        "message": f"Uploaded {idx + 1}/{total_slices} slices to Orthanc...",
+                        "message": f"Uploaded {idx + 1}/{total_slices} files to Orthanc...",
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
 
-            yield f"data: {json.dumps({'stage': 'completed', 'progress': 100, 'studyInstanceUid': study_instance_uid, 'message': 'Dataset ready to view!'})}\n\n"
+            yield f"data: {json.dumps({'stage': 'completed', 'progress': 100, 'studyInstanceUid': study_instance_uid, 'message': 'Study ready to view!'})}\n\n"
 
         except Exception as e:
             print(f"[DatasetService] Error importing sample: {e}")
             yield f"data: {json.dumps({'stage': 'error', 'error': str(e), 'message': f'Import failed: {str(e)}'})}\n\n"
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
 
 dataset_service = DatasetService()
