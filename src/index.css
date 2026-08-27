@@ -581,6 +581,16 @@ body {
   gap: 16px;
   max-height: calc(100vh - 108px);
   overflow-y: auto;
+  transition: width 0.2s ease, padding 0.2s ease;
+}
+
+.viewer-sidebar.collapsed {
+  padding: 14px 6px;
+  align-items: center;
+  overflow: hidden;
+  user-select: none;
+  background: rgba(20, 20, 20, 0.7);
+  border: 1px solid var(--border);
 }
 
 .viewer-sidebar h2 {
@@ -621,6 +631,38 @@ body {
   background: rgba(91, 91, 255, 0.08);
   border-color: var(--accent);
   box-shadow: 0 0 12px rgba(91, 91, 255, 0.15);
+}
+
+/* DICOM SEG Series Card & Thumbnail Styles */
+.series-card.seg-series-card {
+  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.03);
+}
+
+.series-card.seg-series-card:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.series-card.seg-series-card.active {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: #10b981;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.2);
+}
+
+.seg-thumb-container {
+  background: linear-gradient(135deg, #090d16 0%, #0f172a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.series-modality.seg-modality-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
 /* Series Thumbnail styles */
@@ -773,26 +815,45 @@ body {
   }
 }
 
-/* Viewer Layout with Right Segmentation Panel (Expanded or Collapsed) */
-.viewer-layout.with-seg-panel {
+/* Viewer Layout with Left & Right Collapsible Sidebars */
+.viewer-layout.left-open {
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.viewer-layout.left-collapsed {
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.viewer-layout.left-open.with-seg-panel {
   grid-template-columns: 280px minmax(0, 1fr) 290px;
 }
 
-.viewer-layout.with-seg-collapsed {
+.viewer-layout.left-open.with-seg-collapsed {
   grid-template-columns: 280px minmax(0, 1fr) 48px;
 }
 
+.viewer-layout.left-collapsed.with-seg-panel {
+  grid-template-columns: 48px minmax(0, 1fr) 290px;
+}
+
+.viewer-layout.left-collapsed.with-seg-collapsed {
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+}
+
 @media (max-width: 1300px) {
-  .viewer-layout.with-seg-panel {
+  .viewer-layout.left-open.with-seg-panel {
     grid-template-columns: 240px minmax(0, 1fr) 260px;
   }
 }
 
 @media (max-width: 1100px) {
-  .viewer-layout.with-seg-panel {
-    grid-template-columns: 1fr;
-  }
-  .viewer-layout.with-seg-collapsed {
+  .viewer-layout,
+  .viewer-layout.left-open,
+  .viewer-layout.left-collapsed,
+  .viewer-layout.left-open.with-seg-panel,
+  .viewer-layout.left-open.with-seg-collapsed,
+  .viewer-layout.left-collapsed.with-seg-panel,
+  .viewer-layout.left-collapsed.with-seg-collapsed {
     grid-template-columns: 1fr;
   }
 }
@@ -854,8 +915,8 @@ body {
   gap: 14px;
   overflow: hidden;
   user-select: none;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(20, 20, 20, 0.7);
+  border: 1px solid var(--border);
 }
 
 @keyframes slideInRight {
@@ -872,8 +933,8 @@ body {
 
 /* Left top end arrow toggle button */
 .seg-toggle-arrow-btn {
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(25, 25, 25, 0.85);
+  border: 1px solid var(--border);
   color: #94a3b8;
   cursor: pointer;
   padding: 5px;
@@ -886,9 +947,9 @@ body {
 }
 
 .seg-toggle-arrow-btn:hover {
-  background: rgba(56, 189, 248, 0.2);
-  color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(40, 40, 40, 0.9);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
   transform: scale(1.06);
 }
 
@@ -912,18 +973,22 @@ body {
   align-items: center;
 }
 
-.seg-collapsed-icon-btn {
+.seg-collapsed-icon-btn,
+.sidebar-collapsed-icon-btn {
   background: transparent;
   border: none;
+  color: #94a3b8;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease;
 }
 
-.seg-collapsed-icon-btn:hover {
+.seg-collapsed-icon-btn:hover,
+.sidebar-collapsed-icon-btn:hover {
+  color: #38bdf8;
   transform: scale(1.15);
 }
 
