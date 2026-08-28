@@ -32,8 +32,8 @@ A state-of-the-art, web-based medical imaging workspace for DICOM visualization 
 - **Compliance**: Generates standard DICOM SEG objects and automatically stores them in Orthanc via STOW-RS.
 
 ### ☁️ Hugging Face & Cloud Dataset Integration
-- **1-Click Public Dataset Streaming**: Download and ingest sample CT/MR studies directly from Hugging Face into Orthanc with live SSE progress tracking.
-- **Cloud Segmentation Sync**: Push generated DICOM SEG objects directly to Hugging Face repositories for remote sharing and archiving.
+- **1-Click Public Dataset Streaming**: Download and ingest sample CT/MR studies directly from the [Hugging Face Sample Dataset Repository](https://huggingface.co/datasets/vishnusureshperumbavoor/dicom_public_dataset) into Orthanc with live SSE progress tracking.
+- **Cloud Segmentation Sync**: Push generated DICOM SEG objects directly to the Hugging Face dataset repository for remote sharing, archiving, and collaboration.
 
 ### 📲 Real-Time Telegram Notifications
 - Live bot notifications with rich clinical metadata (Patient Name/ID, Study Description, Anatomy, Slice dimensions, Contrast status) upon AI task execution and completion.
