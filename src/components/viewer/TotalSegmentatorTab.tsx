@@ -17,6 +17,10 @@ type TotalSegmentatorTabProps = {
   };
   segmentingSeriesUid?: string | null;
   onRunTotalSegmentator?: (seriesUid: string, task?: string, fast?: boolean) => void;
+  loadedSegs?: Array<{ seriesUid: string; seriesDescription: string; modality: string }>;
+  segDataMap?: Record<string, any>;
+  onSelectSegSeries?: (imageSeriesUid: string, segSeriesUid: string) => void;
+  onSwitchTab?: (tab: "segmentation" | "presets" | "totalsegmentator") => void;
 };
 
 const CATEGORIES = [
@@ -34,12 +38,36 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   selectedSeriesMetadata,
   segmentingSeriesUid,
   onRunTotalSegmentator,
+  loadedSegs = [],
+  segDataMap = {},
+  onSelectSegSeries,
+  onSwitchTab,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isFastMode, setIsFastMode] = useState<boolean>(true);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
 
   const isSegmenting = Boolean(segmentingSeriesUid);
+
+  // Match completed segmentation by DICOM SeriesDescription or ContentLabel
+  const getCompletedSeg = (taskId: string) => {
+    if (!loadedSegs || loadedSegs.length === 0) return undefined;
+
+    const taskDisplay = taskId.replace(/_/g, " ").toLowerCase();
+    const expectedDesc = `${taskDisplay} (totalsegmentator)`;
+    const expectedContentLabel = `TS_${taskId.toUpperCase()}`;
+
+    return loadedSegs.find((seg) => {
+      const desc = (seg.seriesDescription || "").toLowerCase();
+      const segData = segDataMap?.[seg.seriesUid];
+      const contentLabel = (segData?.contentLabel || "").toUpperCase();
+
+      if (contentLabel && contentLabel === expectedContentLabel) return true;
+      if (taskId === "total" && (desc.includes("whole body (totalsegmentator)") || desc.includes("total (totalsegmentator)"))) return true;
+      if (desc.includes(expectedDesc)) return true;
+      return false;
+    });
+  };
 
   const recommendedTasks = useMemo(() => {
     return getRecommendedTasks(selectedSeriesMetadata);
@@ -99,9 +127,10 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
         <div className="totalseg-task-list">
           {recommendedTasks.map((task) => {
             const isThisTaskRunning = isSegmenting && runningTaskId === task.id;
+            const completedSeg = getCompletedSeg(task.id);
 
             return (
-              <div key={task.id} className="totalseg-task-card recommended">
+              <div key={task.id} className={`totalseg-task-card recommended ${completedSeg ? "is-completed" : ""}`}>
                 <div className="totalseg-task-body">
                   <div className="totalseg-task-icon-container">
                     {renderTotalSegIcon(task.id)}
@@ -109,7 +138,11 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                   <div className="totalseg-task-info">
                     <div className="totalseg-task-header">
                       <span className="totalseg-task-name">{task.name}</span>
-                      <span className="totalseg-task-tag">--task {task.id}</span>
+                      {completedSeg ? (
+                        <span className="totalseg-completed-badge">✓ Completed</span>
+                      ) : (
+                        <span className="totalseg-task-tag">--task {task.id}</span>
+                      )}
                     </div>
                     <span className="totalseg-task-desc">{task.description}</span>
                     <div className="totalseg-structure-tags">
@@ -128,23 +161,52 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                 </div>
 
                 <div className="totalseg-task-footer">
-                  <button
-                    className="totalseg-run-btn"
-                    disabled={isSegmenting || !selectedSeriesUid}
-                    onClick={() => handleRunTask(task)}
-                    title={`Run ${task.name} inference`}
-                  >
-                    {isThisTaskRunning ? (
-                      <>
-                        <span className="loading-spinner small" />
-                        <span>Running AI...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>⚡ Run AI</span>
-                      </>
-                    )}
-                  </button>
+                  {completedSeg ? (
+                    <div className="totalseg-completed-action-group">
+                      <button
+                        className="totalseg-view-btn"
+                        onClick={() => {
+                          if (selectedSeriesUid && completedSeg) {
+                            onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
+                            onSwitchTab?.("segmentation");
+                          }
+                        }}
+                        title={`View ${task.name} segmentation`}
+                      >
+                        <span>👁️ View Segments</span>
+                      </button>
+                      <button
+                        className="totalseg-rerun-btn"
+                        disabled={isSegmenting || !selectedSeriesUid}
+                        onClick={() => handleRunTask(task)}
+                        title={`Re-run ${task.name}`}
+                      >
+                        {isThisTaskRunning ? (
+                          <span className="loading-spinner small" />
+                        ) : (
+                          <span>🔄</span>
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="totalseg-run-btn"
+                      disabled={isSegmenting || !selectedSeriesUid}
+                      onClick={() => handleRunTask(task)}
+                      title={`Run ${task.name} inference`}
+                    >
+                      {isThisTaskRunning ? (
+                        <>
+                          <span className="loading-spinner small" />
+                          <span>Running AI...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>⚡ Run AI</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -189,9 +251,10 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
           {filteredTasks.map((task) => {
             const isThisTaskRunning = isSegmenting && runningTaskId === task.id;
             const isRecommended = recommendedIds.has(task.id);
+            const completedSeg = getCompletedSeg(task.id);
 
             return (
-              <div key={task.id} className="totalseg-task-card">
+              <div key={task.id} className={`totalseg-task-card ${completedSeg ? "is-completed" : ""}`}>
                 <div className="totalseg-task-body">
                   <div className="totalseg-task-icon-container">
                     {renderTotalSegIcon(task.id)}
@@ -199,8 +262,12 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                   <div className="totalseg-task-info">
                     <div className="totalseg-task-header">
                       <span className="totalseg-task-name">{task.name}</span>
-                      {isRecommended && (
+                      {completedSeg ? (
+                        <span className="totalseg-completed-badge">✓ Completed</span>
+                      ) : isRecommended ? (
                         <span className="totalseg-match-badge">Matched</span>
+                      ) : (
+                        <span className="totalseg-task-tag">--task {task.id}</span>
                       )}
                     </div>
                     <span className="totalseg-task-desc">{task.description}</span>
@@ -220,23 +287,52 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                 </div>
 
                 <div className="totalseg-task-footer">
-                  <button
-                    className="totalseg-run-btn"
-                    disabled={isSegmenting || !selectedSeriesUid}
-                    onClick={() => handleRunTask(task)}
-                    title={`Run ${task.name} on this series`}
-                  >
-                    {isThisTaskRunning ? (
-                      <>
-                        <span className="loading-spinner small" />
-                        <span>Running AI...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>⚡ Run AI</span>
-                      </>
-                    )}
-                  </button>
+                  {completedSeg ? (
+                    <div className="totalseg-completed-action-group">
+                      <button
+                        className="totalseg-view-btn"
+                        onClick={() => {
+                          if (selectedSeriesUid && completedSeg) {
+                            onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
+                            onSwitchTab?.("segmentation");
+                          }
+                        }}
+                        title={`View ${task.name} segmentation`}
+                      >
+                        <span>👁️ View Segments</span>
+                      </button>
+                      <button
+                        className="totalseg-rerun-btn"
+                        disabled={isSegmenting || !selectedSeriesUid}
+                        onClick={() => handleRunTask(task)}
+                        title={`Re-run ${task.name}`}
+                      >
+                        {isThisTaskRunning ? (
+                          <span className="loading-spinner small" />
+                        ) : (
+                          <span>🔄</span>
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="totalseg-run-btn"
+                      disabled={isSegmenting || !selectedSeriesUid}
+                      onClick={() => handleRunTask(task)}
+                      title={`Run ${task.name} on this series`}
+                    >
+                      {isThisTaskRunning ? (
+                        <>
+                          <span className="loading-spinner small" />
+                          <span>Running AI...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>⚡ Run AI</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             );

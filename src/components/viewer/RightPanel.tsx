@@ -65,6 +65,9 @@ type RightPanelProps = {
   };
   segmentingSeriesUid?: string | null;
   onRunTotalSegmentator?: (seriesUid: string, task?: string, fast?: boolean) => void;
+  loadedSegs?: Array<{ seriesUid: string; seriesDescription: string; modality: string }>;
+  segDataMap?: Record<string, DicomSegData>;
+  onSelectSegSeries?: (imageSeriesUid: string, segSeriesUid: string) => void;
 };
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -85,6 +88,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   selectedSeriesMetadata,
   segmentingSeriesUid,
   onRunTotalSegmentator,
+  loadedSegs,
+  segDataMap,
+  onSelectSegSeries,
 }) => {
   const segments = segData?.segments || [];
 
@@ -261,6 +267,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             selectedSeriesMetadata={selectedSeriesMetadata}
             segmentingSeriesUid={segmentingSeriesUid}
             onRunTotalSegmentator={onRunTotalSegmentator}
+            loadedSegs={loadedSegs}
+            segDataMap={segDataMap}
+            onSelectSegSeries={onSelectSegSeries}
+            onSwitchTab={onChangeTab}
           />
         ) : activeTab === "segmentation" ? (
           <>

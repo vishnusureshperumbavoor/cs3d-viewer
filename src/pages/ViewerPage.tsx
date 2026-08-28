@@ -280,6 +280,12 @@ export default function ViewerPage() {
           selectedSeriesMetadata={selectedSeriesMetadata}
           segmentingSeriesUid={segmentingSeriesUid}
           onRunTotalSegmentator={handleRunTotalSegmentator}
+          loadedSegs={seriesList.filter((s) => s.modality === "SEG")}
+          segDataMap={segDataMap}
+          onSelectSegSeries={(imageSeriesUid, segSeriesUid) => {
+            setSelectedSeriesUid(imageSeriesUid);
+            setActiveSegSeriesUid(segSeriesUid);
+          }}
         />
       </main>
     </div>
