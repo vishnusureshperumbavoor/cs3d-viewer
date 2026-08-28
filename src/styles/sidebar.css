@@ -254,7 +254,7 @@
   color: #ffffff;
 }
 
-/* ── Seg Card Sub-Row with Delete Button ── */
+/* ── Seg Card Sub-Row with Delete & HF Buttons ── */
 .seg-card-sub-row {
   display: flex;
   align-items: center;
@@ -262,6 +262,46 @@
   width: 100%;
   gap: 6px;
   margin-top: 2px;
+}
+
+.seg-card-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.seg-series-hf-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.seg-series-hf-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.3);
+  border-color: rgba(245, 158, 11, 0.6);
+  transform: scale(1.1);
+}
+
+.seg-series-hf-btn.pushed {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #34d399;
+}
+
+.seg-series-hf-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .seg-series-delete-btn {

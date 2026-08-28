@@ -71,6 +71,28 @@ class OrthancClient:
         response = requests.get(url, auth=self.auth, timeout=10)
         if response.status_code == 200:
             return response.json()
+    def get_series_instances(self, series_id: str) -> List[str]:
+        """Retrieves list of instance IDs belonging to a series."""
+        url = f"{self.base_url}/series/{series_id}"
+        try:
+            response = requests.get(url, auth=self.auth, timeout=10)
+            response.raise_for_status()
+            return response.json().get("Instances", [])
+        except Exception as e:
+            print(f"[OrthancClient] Error fetching instances for series {series_id}: {e}")
+            return []
+
+    def get_instance_file(self, instance_id: str) -> Optional[bytes]:
+        """Downloads raw DICOM binary file for an instance."""
+        url = f"{self.base_url}/instances/{instance_id}/file"
+        try:
+            response = requests.get(url, auth=self.auth, timeout=30)
+            response.raise_for_status()
+            return response.content
+        except Exception as e:
+            print(f"[OrthancClient] Error fetching instance file {instance_id}: {e}")
+            return None
+
     def delete_series(self, series_uid: str) -> bool:
         """Deletes a DICOM series from Orthanc by SeriesInstanceUID."""
         series_id = self.lookup_series_id(series_uid)

@@ -49,12 +49,28 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
   const [installedTasks, setInstalledTasks] = useState<string[]>([]);
+  const [pushingTaskId, setPushingTaskId] = useState<string | null>(null);
+  const [pushedTasks, setPushedTasks] = useState<Record<string, string>>({});
 
   const isSegmenting = Boolean(segmentingSeriesUid);
 
   useEffect(() => {
     totalsegmentatorService.getInstalledTasks().then(setInstalledTasks);
   }, [segmentingSeriesUid]);
+
+  const handlePushToHF = async (task: TotalSegTask, completedSeg: { seriesUid: string }) => {
+    if (pushingTaskId) return;
+    setPushingTaskId(task.id);
+    try {
+      const res = await totalsegmentatorService.pushSegToHuggingFace(completedSeg.seriesUid);
+      setPushedTasks((prev) => ({ ...prev, [task.id]: res.url }));
+    } catch (err: any) {
+      console.error("Push to HF failed:", err);
+      alert(err.message || "Failed to push segmentation to Hugging Face.");
+    } finally {
+      setPushingTaskId(null);
+    }
+  };
 
   // Match completed segmentation by DICOM SeriesDescription or ContentLabel
   const getCompletedSeg = (taskId: string) => {
@@ -232,6 +248,31 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                           </svg>
                         </button>
                       )}
+                      <button
+                        className={`totalseg-hf-push-btn ${pushedTasks[task.id] ? "pushed" : ""}`}
+                        disabled={Boolean(pushingTaskId) || isSegmenting}
+                        onClick={() => {
+                          if (pushedTasks[task.id]) {
+                            window.open(pushedTasks[task.id], "_blank");
+                          } else if (completedSeg) {
+                            handlePushToHF(task, completedSeg);
+                          }
+                        }}
+                        title={
+                          pushedTasks[task.id]
+                            ? "Pushed to Hugging Face! Click to open dataset repository"
+                            : `Push ${task.name} segmentation to Hugging Face dataset`
+                        }
+                        aria-label={`Push ${task.name} segmentation to Hugging Face`}
+                      >
+                        {pushingTaskId === task.id ? (
+                          <span className="loading-spinner small" />
+                        ) : pushedTasks[task.id] ? (
+                          <span style={{ fontSize: "0.72rem", fontWeight: 700 }}>✓ HF</span>
+                        ) : (
+                          <span style={{ fontSize: "0.85rem" }} role="img" aria-label="Hugging Face">🤗</span>
+                        )}
+                      </button>
                     </div>
                   ) : (
                     <button
@@ -391,6 +432,31 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                           </svg>
                         </button>
                       )}
+                      <button
+                        className={`totalseg-hf-push-btn ${pushedTasks[task.id] ? "pushed" : ""}`}
+                        disabled={Boolean(pushingTaskId) || isSegmenting}
+                        onClick={() => {
+                          if (pushedTasks[task.id]) {
+                            window.open(pushedTasks[task.id], "_blank");
+                          } else if (completedSeg) {
+                            handlePushToHF(task, completedSeg);
+                          }
+                        }}
+                        title={
+                          pushedTasks[task.id]
+                            ? "Pushed to Hugging Face! Click to open dataset repository"
+                            : `Push ${task.name} segmentation to Hugging Face dataset`
+                        }
+                        aria-label={`Push ${task.name} segmentation to Hugging Face`}
+                      >
+                        {pushingTaskId === task.id ? (
+                          <span className="loading-spinner small" />
+                        ) : pushedTasks[task.id] ? (
+                          <span style={{ fontSize: "0.72rem", fontWeight: 700 }}>✓ HF</span>
+                        ) : (
+                          <span style={{ fontSize: "0.85rem" }} role="img" aria-label="Hugging Face">🤗</span>
+                        )}
+                      </button>
                     </div>
                   ) : (
                     <button

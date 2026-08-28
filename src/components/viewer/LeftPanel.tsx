@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import SeriesThumbnail from "../SeriesThumbnail";
 import { DicomSegData } from "../../services/dicom-seg-service";
+import { totalsegmentatorService } from "../../services/totalsegmentator-service";
 
 export type SeriesListItem = {
   seriesUid: string;
@@ -34,6 +35,22 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   onSelectSegSeries,
   onDeleteSegSeries,
 }) => {
+  const [pushingUid, setPushingUid] = useState<string | null>(null);
+  const [pushedUids, setPushedUids] = useState<Record<string, string>>({});
+
+  const handlePushToHF = async (segSeriesUid: string) => {
+    if (pushingUid) return;
+    setPushingUid(segSeriesUid);
+    try {
+      const res = await totalsegmentatorService.pushSegToHuggingFace(segSeriesUid);
+      setPushedUids((prev) => ({ ...prev, [segSeriesUid]: res.url }));
+    } catch (err: any) {
+      console.error("Push to HF failed:", err);
+      alert(err.message || "Failed to push segmentation to Hugging Face.");
+    } finally {
+      setPushingUid(null);
+    }
+  };
   if (!isOpen) {
     return (
       <aside className="viewer-sidebar collapsed">
@@ -187,26 +204,56 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                         <span className="series-count">
                           {parsedSeg?.segments.length || 0} Segments
                         </span>
-                        {onDeleteSegSeries && isTotalSeg && (
-                          <button
-                            className="seg-series-delete-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(`Delete ${segTitle}?`)) {
-                                onDeleteSegSeries(segSeries.seriesUid);
+                        <div className="seg-card-action-btns">
+                          {isTotalSeg && (
+                            <button
+                              className={`seg-series-hf-btn ${pushedUids[segSeries.seriesUid] ? "pushed" : ""}`}
+                              disabled={pushingUid === segSeries.seriesUid}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (pushedUids[segSeries.seriesUid]) {
+                                  window.open(pushedUids[segSeries.seriesUid], "_blank");
+                                } else {
+                                  handlePushToHF(segSeries.seriesUid);
+                                }
+                              }}
+                              title={
+                                pushedUids[segSeries.seriesUid]
+                                  ? "Pushed to Hugging Face! Click to open dataset repository"
+                                  : `Push ${segTitle} to Hugging Face dataset`
                               }
-                            }}
-                            title={`Delete ${segTitle}`}
-                            aria-label={`Delete ${segTitle}`}
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                              <line x1="10" y1="11" x2="10" y2="17" />
-                              <line x1="14" y1="11" x2="14" y2="17" />
-                            </svg>
-                          </button>
-                        )}
+                              aria-label={`Push ${segTitle} to Hugging Face`}
+                            >
+                              {pushingUid === segSeries.seriesUid ? (
+                                <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
+                              ) : pushedUids[segSeries.seriesUid] ? (
+                                <span style={{ fontSize: "0.68rem", fontWeight: 700 }}>✓</span>
+                              ) : (
+                                <span style={{ fontSize: "0.85rem" }}>🤗</span>
+                              )}
+                            </button>
+                          )}
+                          {onDeleteSegSeries && isTotalSeg && (
+                            <button
+                              className="seg-series-delete-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Delete ${segTitle}?`)) {
+                                  onDeleteSegSeries(segSeries.seriesUid);
+                                }
+                              }}
+                              title={`Delete ${segTitle}`}
+                              aria-label={`Delete ${segTitle}`}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                <line x1="10" y1="11" x2="10" y2="17" />
+                                <line x1="14" y1="11" x2="14" y2="17" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

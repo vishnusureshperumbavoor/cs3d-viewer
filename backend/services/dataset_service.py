@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import zipfile
 import requests
-from typing import Generator, Dict, Any
+from typing import Generator, Dict, Any, Optional
 from huggingface_hub import snapshot_download
 from core.config import HF_REPO_ID, HF_STUDY_FOLDER
 from services.orthanc_client import orthanc_client
@@ -101,5 +101,76 @@ class DatasetService:
         except Exception as e:
             print(f"[DatasetService] Error importing sample: {e}")
             yield f"data: {json.dumps({'stage': 'error', 'error': str(e), 'message': f'Import failed: {str(e)}'})}\n\n"
+
+    def push_seg_to_huggingface(self, series_uid: str, study_folder: Optional[str] = None) -> Dict[str, Any]:
+        """Pushes a DICOM segmentation series from Orthanc to Hugging Face dataset repository."""
+        hf_token = os.getenv("HF_TOKEN")
+        if not hf_token or "your_huggingface" in hf_token:
+            raise ValueError("HF_TOKEN is not properly configured in backend/.env")
+
+        series_id = orthanc_client.lookup_series_id(series_uid)
+        if not series_id:
+            raise ValueError(f"Series with UID {series_uid} not found in Orthanc.")
+
+        instances = orthanc_client.get_series_instances(series_id)
+        if not instances:
+            raise ValueError(f"No instance instances found for series {series_uid}.")
+
+        file_bytes = orthanc_client.get_instance_file(instances[0])
+        if not file_bytes:
+            raise ValueError("Failed to retrieve instance binary data from Orthanc.")
+
+        # Determine clean filename from DICOM header tags
+        import pydicom
+        import io
+        dcm = pydicom.dcmread(io.BytesIO(file_bytes), stop_before_pixels=True)
+        series_desc = str(getattr(dcm, "SeriesDescription", "TotalSegmentator")).strip()
+        task_label = str(getattr(dcm, "ContentLabel", "")).replace("TS_", "").lower()
+
+        # Sanitize filename
+        clean_desc = "".join(c for c in series_desc if c.isalnum() or c in ("-", "_", " ")).strip().replace(" ", "_")
+        if not clean_desc.endswith(".dcm"):
+            filename = f"{clean_desc}.dcm"
+        else:
+            filename = clean_desc
+
+        target_folder = study_folder or HF_STUDY_FOLDER
+        path_in_repo = f"{target_folder}/seg_totalsegmentator/{filename}"
+
+        from huggingface_hub import HfApi
+        api = HfApi(token=hf_token)
+
+        print(f"[DatasetService] Uploading {filename} to HF Repo: {HF_REPO_ID} ({path_in_repo})...")
+        api.upload_file(
+            path_or_fileobj=file_bytes,
+            path_in_repo=path_in_repo,
+            repo_id=HF_REPO_ID,
+            repo_type="dataset",
+            commit_message=f"Upload {series_desc} segmentation"
+        )
+
+        hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/tree/main/{target_folder}/seg_totalsegmentator"
+
+        # Send Telegram notification if enabled
+        try:
+            from services.telegram_notifier import send_telegram_message
+            send_telegram_message(
+                f"🚀 *Pushed Segmentation to Hugging Face*\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"• *File*: `{filename}`\n"
+                f"• *Dataset*: `{HF_REPO_ID}`\n"
+                f"• *Folder*: `{target_folder}/seg_totalsegmentator`\n"
+                f"• *Link*: [View on Hugging Face]({hf_url})"
+            )
+        except Exception as tel_err:
+            print(f"[DatasetService] Telegram alert warning: {tel_err}")
+
+        return {
+            "status": "success",
+            "filename": filename,
+            "pathInRepo": path_in_repo,
+            "repoId": HF_REPO_ID,
+            "url": hf_url,
+        }
 
 dataset_service = DatasetService()

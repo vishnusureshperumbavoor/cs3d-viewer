@@ -51,6 +51,25 @@ async def run_totalsegmentator(request: SegmentationRequest):
             raise ex
         raise HTTPException(status_code=500, detail=str(ex))
 
+@router.post("/push-hf")
+async def push_segmentation_to_huggingface(payload: dict):
+    """Pushes a generated DICOM segmentation series from Orthanc to Hugging Face dataset repo."""
+    from services.dataset_service import dataset_service
+    series_uid = payload.get("seriesInstanceUid")
+    study_folder = payload.get("studyFolder")
+    if not series_uid:
+        raise HTTPException(status_code=400, detail="Missing required 'seriesInstanceUid' parameter.")
+
+    print(f"[Router:Segmentation] Received Hugging Face push request for series: {series_uid}")
+    try:
+        res = dataset_service.push_seg_to_huggingface(series_uid, study_folder=study_folder)
+        return res
+    except Exception as ex:
+        print(f"[Router:Segmentation] Error pushing to Hugging Face: {ex}")
+        if isinstance(ex, HTTPException):
+            raise ex
+        raise HTTPException(status_code=500, detail=str(ex))
+
 @router.delete("/series/{series_uid}")
 async def delete_segmentation_series(series_uid: str):
     """Deletes a DICOM segmentation series from Orthanc."""

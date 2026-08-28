@@ -78,6 +78,29 @@ export const totalsegmentatorService = {
     },
 
     /**
+     * Pushes a generated segmentation series to Hugging Face dataset repo.
+     */
+    pushSegToHuggingFace: async (seriesUid: string, studyFolder?: string): Promise<{ status: string; url: string; filename: string }> => {
+        const response = await fetch("http://localhost:8000/api/segment/push-hf", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                seriesInstanceUid: seriesUid,
+                studyFolder: studyFolder,
+            }),
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(errText || "Failed to push segmentation to Hugging Face.");
+        }
+
+        return await response.json();
+    },
+
+    /**
      * Reads, base64 encodes, and parses a local DICOM SEG file uploaded by the user.
      */
     parseFile: async (file: File): Promise<SegmentationResult> => {

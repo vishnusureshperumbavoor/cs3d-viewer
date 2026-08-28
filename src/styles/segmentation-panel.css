@@ -894,6 +894,39 @@
   transform: translateY(-1px);
 }
 
+.totalseg-hf-push-btn {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  padding: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  width: 28px;
+  height: 26px;
+}
+
+.totalseg-hf-push-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.totalseg-hf-push-btn.pushed {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.totalseg-hf-push-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .totalseg-run-btn {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.14);
