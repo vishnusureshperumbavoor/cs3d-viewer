@@ -1,8 +1,39 @@
+import os
 from fastapi import APIRouter, HTTPException
 from schemas.segmentation import SegmentationRequest
 from services.segmentator import run_segmentation_pipeline
 
 router = APIRouter(prefix="/segment", tags=["Segmentation"])
+
+@router.get("/installed-models")
+async def get_installed_models():
+    """Returns a list of TotalSegmentator task names whose model weights are cached locally on disk."""
+    try:
+        from totalsegmentator.python_api import TASK_CONFIGS
+        user_dir = os.path.expanduser("~/.totalsegmentator_user/nnunet/results")
+        default_dir = os.path.expanduser("~/.totalsegmentator/nnunet/results")
+
+        dirs = []
+        if os.path.exists(user_dir):
+            dirs.extend(os.listdir(user_dir))
+        if os.path.exists(default_dir):
+            dirs.extend(os.listdir(default_dir))
+
+        installed = []
+        for task, conf in TASK_CONFIGS.items():
+            task_ids = conf.get("task_id")
+            if not task_ids and "sub_modes" in conf:
+                task_ids = conf["sub_modes"].get("fast", {}).get("task_id") or conf["sub_modes"].get("default", {}).get("task_id")
+            if task_ids:
+                if isinstance(task_ids, int):
+                    task_ids = [task_ids]
+                if any(any(d.startswith(f"Dataset{tid:03d}") for d in dirs) for tid in task_ids):
+                    installed.append(task)
+
+        return {"installedTasks": sorted(list(set(installed)))}
+    except Exception as e:
+        print(f"[Segmentation] Error detecting installed models: {e}")
+        return {"installedTasks": []}
 
 @router.post("/total")
 async def run_totalsegmentator(request: SegmentationRequest):
@@ -19,3 +50,4 @@ async def run_totalsegmentator(request: SegmentationRequest):
         if isinstance(ex, HTTPException):
             raise ex
         raise HTTPException(status_code=500, detail=str(ex))
+

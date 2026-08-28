@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   TOTALSEGMENTATOR_TASKS,
   getRecommendedTasks,
   TotalSegTask,
 } from "../../constants/totalsegmentator-tasks";
 import { renderTotalSegIcon } from "./TotalSegIcons";
+import { totalsegmentatorService } from "../../services/totalsegmentator-service";
 
 type TotalSegmentatorTabProps = {
   selectedSeriesUid?: string | null;
@@ -45,8 +46,13 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
+  const [installedTasks, setInstalledTasks] = useState<string[]>([]);
 
   const isSegmenting = Boolean(segmentingSeriesUid);
+
+  useEffect(() => {
+    totalsegmentatorService.getInstalledTasks().then(setInstalledTasks);
+  }, [segmentingSeriesUid]);
 
   // Match completed segmentation by DICOM SeriesDescription or ContentLabel
   const getCompletedSeg = (taskId: string) => {
@@ -124,6 +130,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
           {recommendedTasks.map((task) => {
             const isThisTaskRunning = isSegmenting && runningTaskId === task.id;
             const completedSeg = getCompletedSeg(task.id);
+            const isDownloaded = installedTasks.includes(task.id);
 
             return (
               <div key={task.id} className={`totalseg-task-card recommended ${completedSeg ? "is-completed" : ""}`}>
@@ -136,20 +143,21 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                     {/* Row 1: Full-width Title (Never truncated) */}
                     <span className="totalseg-task-name">{task.name}</span>
 
-                    {/* Row 2: Badges (Matched, CE, Academic Key, Completed) + Structure Tags */}
+                    {/* Row 2: Badges (Completed, Matched, Downloaded, Academic Key) + Structure Tags */}
                     <div className="totalseg-badges-and-tags-row">
-                      {completedSeg ? (
+                      {completedSeg && (
                         <span className="totalseg-completed-badge">✓ Completed</span>
-                      ) : (
-                        <>
-                          <span className="totalseg-match-badge">Matched</span>
-                          {task.requiresContrast && (
-                            <span className="totalseg-contrast-badge" title="Recommended for contrast-enhanced CT scans">CE</span>
-                          )}
-                          {task.requiresLicense && (
-                            <span className="totalseg-license-badge" title="Requires free academic license from totalsegmentator.com">🔑 Academic Key</span>
-                          )}
-                        </>
+                      )}
+                      {!completedSeg && (
+                        <span className="totalseg-match-badge">Matched</span>
+                      )}
+                      {isDownloaded && (
+                        <span className="totalseg-downloaded-badge" title="Model weights cached locally (~320MB). Instant execution without download.">
+                          ⚡ Downloaded
+                        </span>
+                      )}
+                      {task.requiresLicense && (
+                        <span className="totalseg-license-badge" title="Requires free academic license from totalsegmentator.com">🔑 Academic Key</span>
                       )}
 
                       {task.structures.slice(0, 3).map((s) => (
@@ -258,6 +266,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
             const isThisTaskRunning = isSegmenting && runningTaskId === task.id;
             const isRecommended = recommendedIds.has(task.id);
             const completedSeg = getCompletedSeg(task.id);
+            const isDownloaded = installedTasks.includes(task.id);
 
             return (
               <div key={task.id} className={`totalseg-task-card ${completedSeg ? "is-completed" : ""}`}>
@@ -270,23 +279,24 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                     {/* Row 1: Full-width Title (Never truncated) */}
                     <span className="totalseg-task-name">{task.name}</span>
 
-                    {/* Row 2: Badges (Matched, CE, Academic Key, Completed, --task tag) + Structure Tags */}
+                    {/* Row 2: Badges (Completed, Matched, Downloaded, Academic Key, --task tag) + Structure Tags */}
                     <div className="totalseg-badges-and-tags-row">
-                      {completedSeg ? (
+                      {completedSeg && (
                         <span className="totalseg-completed-badge">✓ Completed</span>
-                      ) : (
-                        <>
-                          {isRecommended && <span className="totalseg-match-badge">Matched</span>}
-                          {task.requiresContrast && (
-                            <span className="totalseg-contrast-badge" title="Recommended for contrast-enhanced CT scans">CE</span>
-                          )}
-                          {task.requiresLicense && (
-                            <span className="totalseg-license-badge" title="Requires free academic license from totalsegmentator.com">🔑 Academic Key</span>
-                          )}
-                          {!isRecommended && !task.requiresLicense && (
-                            <span className="totalseg-task-tag">--task {task.id}</span>
-                          )}
-                        </>
+                      )}
+                      {isRecommended && !completedSeg && (
+                        <span className="totalseg-match-badge">Matched</span>
+                      )}
+                      {isDownloaded && (
+                        <span className="totalseg-downloaded-badge" title="Model weights cached locally (~320MB). Instant execution without download.">
+                          ⚡ Downloaded
+                        </span>
+                      )}
+                      {task.requiresLicense && (
+                        <span className="totalseg-license-badge" title="Requires free academic license from totalsegmentator.com">🔑 Academic Key</span>
+                      )}
+                      {!completedSeg && !isRecommended && !task.requiresLicense && !isDownloaded && (
+                        <span className="totalseg-task-tag">--task {task.id}</span>
                       )}
 
                       {task.structures.slice(0, 3).map((s) => (

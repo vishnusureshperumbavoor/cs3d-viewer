@@ -48,6 +48,21 @@ export const totalsegmentatorService = {
     },
 
     /**
+     * Fetches the list of TotalSegmentator model tasks that are already downloaded & cached locally.
+     */
+    getInstalledTasks: async (): Promise<string[]> => {
+        try {
+            const response = await fetch("http://localhost:8000/api/segment/installed-models");
+            if (!response.ok) return [];
+            const data = await response.json();
+            return data.installedTasks || [];
+        } catch (e) {
+            console.warn("Failed to fetch installed TotalSegmentator models:", e);
+            return [];
+        }
+    },
+
+    /**
      * Reads, base64 encodes, and parses a local DICOM SEG file uploaded by the user.
      */
     parseFile: async (file: File): Promise<SegmentationResult> => {
