@@ -87,7 +87,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   const handleRunTask = (task: TotalSegTask) => {
     if (!selectedSeriesUid || isSegmenting) return;
     setRunningTaskId(task.id);
-    onRunTotalSegmentator?.(selectedSeriesUid, task.id, isFastMode);
+    const fast = task.id === "total" ? isFastMode : false;
+    onRunTotalSegmentator?.(selectedSeriesUid, task.id, fast);
   };
 
   const modality = selectedSeriesMetadata?.modality || "CT";

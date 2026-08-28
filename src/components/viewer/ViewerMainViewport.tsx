@@ -2,6 +2,7 @@ import React from "react";
 import CornerstoneViewport from "../CornerstoneViewport";
 import { MPRViewer } from "../viewport/MPRViewer";
 import { DicomSegData } from "../../services/dicom-seg-service";
+import { TotalSegmentatorLoadingOverlay } from "./TotalSegmentatorLoadingOverlay";
 
 type ViewerMainViewportProps = {
   error: string | null;
@@ -13,6 +14,7 @@ type ViewerMainViewportProps = {
   segVisibility: Record<number, boolean>;
   segmentOpacity: number;
   segmentingSeriesUid: string | null;
+  segmentingTaskName?: string | null;
   totalSegError: string | null;
   onDismissTotalSegError: () => void;
 };
@@ -27,34 +29,14 @@ export const ViewerMainViewport: React.FC<ViewerMainViewportProps> = ({
   segVisibility,
   segmentOpacity,
   segmentingSeriesUid,
+  segmentingTaskName,
   totalSegError,
   onDismissTotalSegError,
 }) => {
   return (
     <section className="viewer-panel" style={{ position: "relative" }}>
       {segmentingSeriesUid && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.8)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "16px",
-            zIndex: 99,
-          }}
-        >
-          <div className="loading-spinner" style={{ width: "40px", height: "40px", borderWidth: "3px" }} />
-          <div style={{ textAlign: "center" }}>
-            <h3 style={{ color: "#ffffff", margin: "0 0 8px 0" }}>Running TotalSegmentator...</h3>
-            <p style={{ color: "var(--muted)", margin: 0, fontSize: "0.9rem" }}>
-              Performing whole-body automated segmentation on CPU.<br />
-              This process usually takes 1 to 2 minutes. Please stand by.
-            </p>
-          </div>
-        </div>
+        <TotalSegmentatorLoadingOverlay taskName={segmentingTaskName} />
       )}
 
       {totalSegError && (

@@ -63,10 +63,16 @@ def run_segmentation_pipeline(series_uid: str, task: str = "total", fast: bool =
         if task and task != "total":
             cmd.extend(["--task", task])
 
-        if fast:
+        # In TotalSegmentator, --fast is only supported for whole-body ('total') task
+        if fast and (not task or task == "total"):
             cmd.append("--fast")
 
+        user_totalseg_dir = os.path.expanduser("~/.totalsegmentator_user")
+        os.makedirs(os.path.join(user_totalseg_dir, "nnunet", "results"), exist_ok=True)
+
         env = os.environ.copy()
+        env["TOTALSEG_HOME_DIR"] = user_totalseg_dir
+        env["TOTALSEG_WEIGHTS_PATH"] = os.path.join(user_totalseg_dir, "nnunet", "results")
         env["OMP_NUM_THREADS"] = "4"
 
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)

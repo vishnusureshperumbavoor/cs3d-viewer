@@ -7,6 +7,11 @@ cd "$DIR"
 # Increase timeout for large wheel downloads (PyTorch, SimpleITK, TotalSegmentator)
 export UV_HTTP_TIMEOUT=600
 
+# Configure user-writable directory for TotalSegmentator model weights & nnUNet results
+export TOTALSEG_HOME_DIR="$HOME/.totalsegmentator_user"
+export TOTALSEG_WEIGHTS_PATH="$HOME/.totalsegmentator_user/nnunet/results"
+mkdir -p "$TOTALSEG_WEIGHTS_PATH"
+
 VENV_DIR="venv"
 
 # Check for uv in standard paths

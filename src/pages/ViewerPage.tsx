@@ -145,6 +145,7 @@ export default function ViewerPage() {
   }, [viewMode]);
 
   const [segmentingSeriesUid, setSegmentingSeriesUid] = useState<string | null>(null);
+  const [segmentingTaskName, setSegmentingTaskName] = useState<string | null>(null);
   const [totalSegError, setTotalSegError] = useState<string | null>(null);
 
   // Set default selected series once seriesList is loaded (pick first non-SEG image series)
@@ -158,24 +159,23 @@ export default function ViewerPage() {
   const activeImageIds = useMemo(() => {
     if (!selectedSeriesUid) return [];
     const activeSeries =
-      seriesList.find((s) => s.seriesUid === selectedSeriesUid && s.modality !== "SEG") ||
-      seriesList.find((s) => s.modality !== "SEG");
+      seriesList.find((s) => s.seriesUid === selectedSeriesUid) || seriesList[0];
     return activeSeries ? activeSeries.instances.map((i) => i.imageId) : [];
-  }, [selectedSeriesUid, seriesList]);
+  }, [seriesList, selectedSeriesUid]);
 
   const selectedSeriesMetadata = useMemo(() => {
     if (!selectedSeriesUid) return undefined;
     const series = seriesList.find((s) => s.seriesUid === selectedSeriesUid);
-    if (!series) return undefined;
-    const firstInst = series.instances[0];
+    if (!series || !series.instances[0]) return undefined;
+    const first = series.instances[0];
     return {
       modality: series.modality,
-      bodyPartExamined: firstInst?.bodyPartExamined,
+      bodyPartExamined: first.bodyPartExamined,
       seriesDescription: series.seriesDescription,
-      contrastBolusAgent: firstInst?.contrastBolusAgent,
+      contrastBolusAgent: first.contrastBolusAgent,
       instanceCount: series.instanceCount,
     };
-  }, [selectedSeriesUid, seriesList]);
+  }, [seriesList, selectedSeriesUid]);
 
   const patientDetails = useMemo(() => {
     if (instances.length === 0) return undefined;
@@ -196,6 +196,7 @@ export default function ViewerPage() {
   ) => {
     if (!seriesUid || segmentingSeriesUid) return;
     setSegmentingSeriesUid(seriesUid);
+    setSegmentingTaskName(task);
     setTotalSegError(null);
     try {
       await totalsegmentatorService.run(
@@ -211,6 +212,7 @@ export default function ViewerPage() {
       setTotalSegError(err.message || "An unexpected error occurred during TotalSegmentator execution.");
     } finally {
       setSegmentingSeriesUid(null);
+      setSegmentingTaskName(null);
     }
   };
 
@@ -253,6 +255,7 @@ export default function ViewerPage() {
           segVisibility={segVisibility}
           segmentOpacity={segmentOpacity}
           segmentingSeriesUid={segmentingSeriesUid}
+          segmentingTaskName={segmentingTaskName}
           totalSegError={totalSegError}
           onDismissTotalSegError={() => setTotalSegError(null)}
         />
