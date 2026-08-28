@@ -146,6 +146,7 @@ export default function ViewerPage() {
 
   const [segmentingSeriesUid, setSegmentingSeriesUid] = useState<string | null>(null);
   const [segmentingTaskName, setSegmentingTaskName] = useState<string | null>(null);
+  const [segmentingStatus, setSegmentingStatus] = useState<"running" | "completed">("running");
   const [totalSegError, setTotalSegError] = useState<string | null>(null);
 
   // Set default selected series once seriesList is loaded (pick first non-SEG image series)
@@ -197,6 +198,7 @@ export default function ViewerPage() {
     if (!seriesUid || segmentingSeriesUid) return;
     setSegmentingSeriesUid(seriesUid);
     setSegmentingTaskName(task);
+    setSegmentingStatus("running");
     setTotalSegError(null);
     try {
       await totalsegmentatorService.run(
@@ -206,14 +208,20 @@ export default function ViewerPage() {
         fast
       );
       await refetch();
-      setActiveRightSidebarTab("segmentation");
+      setSegmentingStatus("completed");
     } catch (err: any) {
       console.error("TotalSegmentator run failed:", err);
       setTotalSegError(err.message || "An unexpected error occurred during TotalSegmentator execution.");
-    } finally {
       setSegmentingSeriesUid(null);
       setSegmentingTaskName(null);
     }
+  };
+
+  const handleDismissSegmentingOverlay = () => {
+    setSegmentingSeriesUid(null);
+    setSegmentingTaskName(null);
+    setSegmentingStatus("running");
+    setActiveRightSidebarTab("segmentation");
   };
 
   return (
@@ -256,6 +264,8 @@ export default function ViewerPage() {
           segmentOpacity={segmentOpacity}
           segmentingSeriesUid={segmentingSeriesUid}
           segmentingTaskName={segmentingTaskName}
+          segmentingStatus={segmentingStatus}
+          onDismissSegmentingOverlay={handleDismissSegmentingOverlay}
           totalSegError={totalSegError}
           onDismissTotalSegError={() => setTotalSegError(null)}
         />

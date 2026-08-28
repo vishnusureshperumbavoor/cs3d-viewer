@@ -15,6 +15,8 @@ type ViewerMainViewportProps = {
   segmentOpacity: number;
   segmentingSeriesUid: string | null;
   segmentingTaskName?: string | null;
+  segmentingStatus?: "running" | "completed";
+  onDismissSegmentingOverlay?: () => void;
   totalSegError: string | null;
   onDismissTotalSegError: () => void;
 };
@@ -30,13 +32,19 @@ export const ViewerMainViewport: React.FC<ViewerMainViewportProps> = ({
   segmentOpacity,
   segmentingSeriesUid,
   segmentingTaskName,
+  segmentingStatus = "running",
+  onDismissSegmentingOverlay,
   totalSegError,
   onDismissTotalSegError,
 }) => {
   return (
     <section className="viewer-panel" style={{ position: "relative" }}>
       {segmentingSeriesUid && (
-        <TotalSegmentatorLoadingOverlay taskName={segmentingTaskName} />
+        <TotalSegmentatorLoadingOverlay
+          taskName={segmentingTaskName}
+          status={segmentingStatus}
+          onDismiss={onDismissSegmentingOverlay}
+        />
       )}
 
       {totalSegError && (
