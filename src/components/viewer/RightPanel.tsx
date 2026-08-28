@@ -40,7 +40,7 @@ export const VOLUME_PRESETS = [
   },
 ];
 
-type SegmentationPanelProps = {
+type RightPanelProps = {
   isOpen: boolean;
   onToggle: () => void;
   segData: DicomSegData | null;
@@ -56,7 +56,7 @@ type SegmentationPanelProps = {
   onResetCameras?: () => void;
 };
 
-export const SegmentationPanel: React.FC<SegmentationPanelProps> = ({
+export const RightPanel: React.FC<RightPanelProps> = ({
   isOpen,
   onToggle,
   segData,

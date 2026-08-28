@@ -4,8 +4,8 @@ export { default as CornerstoneViewport } from "./CornerstoneViewport";
 export { default as SeriesThumbnail } from "./SeriesThumbnail";
 export { default as Logo } from "./Logo";
 export { default as PatientHeaderInfo } from "./PatientHeaderInfo";
-export { SegmentationPanel } from "./viewer/SegmentationPanel";
+export { RightPanel } from "./viewer/RightPanel";
 export { ViewerHeader } from "./viewer/ViewerHeader";
-export { ViewerSeriesSidebar } from "./viewer/ViewerSeriesSidebar";
+export { LeftPanel } from "./viewer/LeftPanel";
 export { ViewerMainViewport } from "./viewer/ViewerMainViewport";
 

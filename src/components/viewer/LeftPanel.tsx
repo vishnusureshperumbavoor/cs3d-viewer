@@ -11,7 +11,7 @@ export type SeriesListItem = {
   instanceCount: number;
 };
 
-type ViewerSeriesSidebarProps = {
+type LeftPanelProps = {
   isOpen: boolean;
   onToggleOpen: () => void;
   seriesList: SeriesListItem[];
@@ -24,7 +24,7 @@ type ViewerSeriesSidebarProps = {
   onRunTotalSegmentator: (seriesUid: string) => void;
 };
 
-export const ViewerSeriesSidebar: React.FC<ViewerSeriesSidebarProps> = ({
+export const LeftPanel: React.FC<LeftPanelProps> = ({
   isOpen,
   onToggleOpen,
   seriesList,

@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { getRenderingEngine } from "@cornerstonejs/core";
 import {
   ViewerHeader,
-  ViewerSeriesSidebar,
+  LeftPanel,
   ViewerMainViewport,
-  SegmentationPanel,
+  RightPanel,
 } from "../components";
 import { resetMPRCameras } from "../components/viewport/MPRViewer";
 import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS } from "../utils/mpr-utils";
@@ -210,7 +210,7 @@ export default function ViewerPage() {
           }`}
       >
         {seriesList.length > 0 && (
-          <ViewerSeriesSidebar
+          <LeftPanel
             isOpen={isLeftSidebarOpen}
             onToggleOpen={() => setIsLeftSidebarOpen((prev) => !prev)}
             seriesList={seriesList}
@@ -219,7 +219,7 @@ export default function ViewerPage() {
             segDataMap={segDataMap}
             segmentingSeriesUid={segmentingSeriesUid}
             onSelectSeries={setSelectedSeriesUid}
-            onSelectSegSeries={(imageSeriesUid, segSeriesUid) => {
+            onSelectSegSeries={(imageSeriesUid: string, segSeriesUid: string) => {
               setSelectedSeriesUid(imageSeriesUid);
               setActiveSegSeriesUid(segSeriesUid);
             }}
@@ -242,13 +242,13 @@ export default function ViewerPage() {
         />
 
         {(segData || viewMode === "3d") && (
-          <SegmentationPanel
+          <RightPanel
             isOpen={isSegPanelOpen}
             onToggle={() => setIsSegPanelOpen((prev) => !prev)}
             segData={segData}
             isLoading={isLoadingSeg}
             segmentVisibility={segVisibility}
-            onToggleSegmentVisibility={(segNum) =>
+            onToggleSegmentVisibility={(segNum: number) =>
               setSegVisibility((prev) => ({
                 ...prev,
                 [segNum]: !(prev[segNum] ?? true),
