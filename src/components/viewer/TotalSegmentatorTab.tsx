@@ -44,7 +44,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   onSwitchTab,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [isFastMode, setIsFastMode] = useState<boolean>(true);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
 
   const isSegmenting = Boolean(segmentingSeriesUid);
@@ -87,7 +86,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   const handleRunTask = (task: TotalSegTask) => {
     if (!selectedSeriesUid || isSegmenting) return;
     setRunningTaskId(task.id);
-    const fast = task.id === "total" ? isFastMode : false;
+    const fast = task.id === "total";
     onRunTotalSegmentator?.(selectedSeriesUid, task.id, fast);
   };
 
@@ -98,7 +97,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
     : selectedSeriesMetadata?.seriesDescription?.toLowerCase().includes("arterial")
     ? "Arterial Contrast"
     : "Non-Contrast";
-  const sliceCount = selectedSeriesMetadata?.instanceCount || 0;
 
   return (
     <div className="totalseg-tab-view">
@@ -108,9 +106,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
           <span className="totalseg-scan-badge">{modality}</span>
           <span className="totalseg-scan-bodypart">{bodyPart}</span>
           <span className="totalseg-scan-contrast">{contrast}</span>
-          {sliceCount > 0 && (
-            <span className="totalseg-scan-slices">{sliceCount} slices</span>
-          )}
         </div>
       </div>
 
@@ -132,40 +127,54 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
 
             return (
               <div key={task.id} className={`totalseg-task-card recommended ${completedSeg ? "is-completed" : ""}`}>
-                <div className="totalseg-task-body">
+                {/* Header: Icon on left, Title on Top, Badges & Tags below Title */}
+                <div className="totalseg-task-header-section">
                   <div className="totalseg-task-icon-container">
                     {renderTotalSegIcon(task.id)}
                   </div>
-                  <div className="totalseg-task-info">
-                    <div className="totalseg-task-header">
-                      <span className="totalseg-task-name">{task.name}</span>
+                  <div className="totalseg-task-header-content">
+                    {/* Row 1: Full-width Title (Never truncated) */}
+                    <span className="totalseg-task-name">{task.name}</span>
+
+                    {/* Row 2: Badges (Matched, CE, Academic Key, Completed) + Structure Tags */}
+                    <div className="totalseg-badges-and-tags-row">
                       {completedSeg ? (
                         <span className="totalseg-completed-badge">✓ Completed</span>
                       ) : (
-                        <span className="totalseg-task-tag">--task {task.id}</span>
+                        <>
+                          <span className="totalseg-match-badge">Matched</span>
+                          {task.requiresContrast && (
+                            <span className="totalseg-contrast-badge" title="Recommended for contrast-enhanced CT scans">CE</span>
+                          )}
+                          {task.requiresLicense && (
+                            <span className="totalseg-license-badge" title="Requires free academic license from totalsegmentator.com">🔑 Academic Key</span>
+                          )}
+                        </>
                       )}
-                    </div>
-                    <span className="totalseg-task-desc">{task.description}</span>
-                    <div className="totalseg-structure-tags">
-                      {task.structures.slice(0, 4).map((s) => (
+
+                      {task.structures.slice(0, 3).map((s) => (
                         <span key={s} className="totalseg-structure-tag">
                           {s}
                         </span>
                       ))}
-                      {task.structures.length > 4 && (
+                      {task.structures.length > 3 && (
                         <span className="totalseg-structure-tag more">
-                          +{task.structures.length - 4} more
+                          +{task.structures.length - 3} more
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
+                {/* Row 3: Full-width description */}
+                <span className="totalseg-task-desc">{task.description}</span>
+
+                {/* Footer Actions */}
                 <div className="totalseg-task-footer">
                   {completedSeg ? (
                     <div className="totalseg-completed-action-group">
                       <button
-                        className="totalseg-view-btn"
+                        className="totalseg-view-btn icon-only"
                         onClick={() => {
                           if (selectedSeriesUid && completedSeg) {
                             onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
@@ -173,8 +182,13 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                           }
                         }}
                         title={`View ${task.name} segmentation`}
+                        aria-label={`View ${task.name} segmentation`}
                       >
-                        <span>👁️ View Segments</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
                       </button>
                       <button
                         className="totalseg-rerun-btn"
@@ -194,16 +208,16 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                       className="totalseg-run-btn"
                       disabled={isSegmenting || !selectedSeriesUid}
                       onClick={() => handleRunTask(task)}
-                      title={`Run ${task.name} inference`}
                     >
                       {isThisTaskRunning ? (
                         <>
                           <span className="loading-spinner small" />
-                          <span>Running AI...</span>
+                          <span>Segmenting...</span>
                         </>
                       ) : (
                         <>
-                          <span>⚡ Run AI</span>
+                          <span role="img" aria-label="AI">✨</span>
+                          <span>Run AI</span>
                         </>
                       )}
                     </button>
@@ -223,15 +237,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
               Specialized AI Models
             </span>
           </div>
-
-          <label className="totalseg-fast-mode-toggle" title="Fast mode (~3mm) completes in 1-2 minutes">
-            <input
-              type="checkbox"
-              checked={isFastMode}
-              onChange={(e) => setIsFastMode(e.target.checked)}
-            />
-            <span>Fast Mode</span>
-          </label>
         </div>
 
         {/* Category Pills */}
@@ -256,23 +261,34 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
 
             return (
               <div key={task.id} className={`totalseg-task-card ${completedSeg ? "is-completed" : ""}`}>
-                <div className="totalseg-task-body">
+                {/* Header: Icon on left, Title on Top, Badges & Tags below Title */}
+                <div className="totalseg-task-header-section">
                   <div className="totalseg-task-icon-container">
                     {renderTotalSegIcon(task.id)}
                   </div>
-                  <div className="totalseg-task-info">
-                    <div className="totalseg-task-header">
-                      <span className="totalseg-task-name">{task.name}</span>
+                  <div className="totalseg-task-header-content">
+                    {/* Row 1: Full-width Title (Never truncated) */}
+                    <span className="totalseg-task-name">{task.name}</span>
+
+                    {/* Row 2: Badges (Matched, CE, Academic Key, Completed, --task tag) + Structure Tags */}
+                    <div className="totalseg-badges-and-tags-row">
                       {completedSeg ? (
                         <span className="totalseg-completed-badge">✓ Completed</span>
-                      ) : isRecommended ? (
-                        <span className="totalseg-match-badge">Matched</span>
                       ) : (
-                        <span className="totalseg-task-tag">--task {task.id}</span>
+                        <>
+                          {isRecommended && <span className="totalseg-match-badge">Matched</span>}
+                          {task.requiresContrast && (
+                            <span className="totalseg-contrast-badge" title="Recommended for contrast-enhanced CT scans">CE</span>
+                          )}
+                          {task.requiresLicense && (
+                            <span className="totalseg-license-badge" title="Requires free academic license from totalsegmentator.com">🔑 Academic Key</span>
+                          )}
+                          {!isRecommended && !task.requiresLicense && (
+                            <span className="totalseg-task-tag">--task {task.id}</span>
+                          )}
+                        </>
                       )}
-                    </div>
-                    <span className="totalseg-task-desc">{task.description}</span>
-                    <div className="totalseg-structure-tags">
+
                       {task.structures.slice(0, 3).map((s) => (
                         <span key={s} className="totalseg-structure-tag">
                           {s}
@@ -280,18 +296,22 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                       ))}
                       {task.structures.length > 3 && (
                         <span className="totalseg-structure-tag more">
-                          +{task.structures.length - 3}
+                          +{task.structures.length - 3} more
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
+                {/* Row 3: Full-width description */}
+                <span className="totalseg-task-desc">{task.description}</span>
+
+                {/* Footer Actions */}
                 <div className="totalseg-task-footer">
                   {completedSeg ? (
                     <div className="totalseg-completed-action-group">
                       <button
-                        className="totalseg-view-btn"
+                        className="totalseg-view-btn icon-only"
                         onClick={() => {
                           if (selectedSeriesUid && completedSeg) {
                             onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
@@ -299,8 +319,13 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                           }
                         }}
                         title={`View ${task.name} segmentation`}
+                        aria-label={`View ${task.name} segmentation`}
                       >
-                        <span>👁️ View Segments</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
                       </button>
                       <button
                         className="totalseg-rerun-btn"
@@ -320,16 +345,16 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                       className="totalseg-run-btn"
                       disabled={isSegmenting || !selectedSeriesUid}
                       onClick={() => handleRunTask(task)}
-                      title={`Run ${task.name} on this series`}
                     >
                       {isThisTaskRunning ? (
                         <>
                           <span className="loading-spinner small" />
-                          <span>Running AI...</span>
+                          <span>Segmenting...</span>
                         </>
                       ) : (
                         <>
-                          <span>⚡ Run AI</span>
+                          <span role="img" aria-label="AI">✨</span>
+                          <span>Run AI</span>
                         </>
                       )}
                     </button>

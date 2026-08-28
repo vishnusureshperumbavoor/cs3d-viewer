@@ -77,8 +77,9 @@ def run_segmentation_pipeline(series_uid: str, task: str = "total", fast: bool =
 
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         if result.returncode != 0:
-            print(f"[TotalSegmentator] Failed: {result.stderr}")
-            raise HTTPException(status_code=500, detail=f"TotalSegmentator inference failed: {result.stderr}")
+            err_output = (result.stderr or "").strip() or (result.stdout or "").strip() or "Unknown error"
+            print(f"[TotalSegmentator] Failed ({result.returncode}): {err_output}")
+            raise HTTPException(status_code=500, detail=f"TotalSegmentator inference failed: {err_output}")
 
         if not os.path.exists(output_seg_path):
             raise HTTPException(status_code=500, detail="TotalSegmentator completed but output SEG was not created.")

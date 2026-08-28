@@ -626,14 +626,14 @@
 }
 
 .totalseg-task-card {
-  background: rgba(18, 18, 24, 0.85);
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  transition: all 0.18s ease;
+  gap: 7px;
+  transition: all 0.2s ease;
 }
 
 .totalseg-task-card.recommended {
@@ -647,16 +647,17 @@
   transform: translateY(-1px);
 }
 
-.totalseg-task-body {
+.totalseg-task-header-section {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
+  width: 100%;
 }
 
 .totalseg-task-icon-container {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -675,26 +676,51 @@
   transform: scale(1.05);
 }
 
-.totalseg-task-info {
+.totalseg-task-header-content {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
 
-.totalseg-task-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 .totalseg-task-name {
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   font-weight: 600;
   color: #ffffff;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.totalseg-badges-and-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.totalseg-contrast-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  padding: 0 4px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.totalseg-completed-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
 }
 
 .totalseg-task-tag {
@@ -718,25 +744,37 @@
   letter-spacing: 0.03em;
 }
 
+.totalseg-license-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
 .totalseg-task-desc {
-  font-size: 0.69rem;
+  font-size: 0.72rem;
   color: #94a3b8;
-  line-height: 1.3;
+  line-height: 1.35;
+  width: 100%;
 }
 
 .totalseg-structure-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
-  margin-top: 3px;
+  gap: 4px;
+  width: 100%;
 }
 
 .totalseg-structure-tag {
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   color: #cbd5e1;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 4px;
 }
 
@@ -779,20 +817,26 @@
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.35);
   color: #34d399;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 6px;
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
   transition: all 0.15s ease;
 }
 
+.totalseg-view-btn.icon-only {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+}
+
 .totalseg-view-btn:hover {
-  background: rgba(16, 185, 129, 0.2);
-  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.22);
+  border-color: rgba(16, 185, 129, 0.55);
   color: #ffffff;
   transform: translateY(-1px);
 }

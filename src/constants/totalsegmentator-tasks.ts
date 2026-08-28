@@ -8,6 +8,7 @@ export interface TotalSegTask {
   bodyParts: string[];
   modality: "CT" | "MR" | "ANY";
   requiresContrast?: boolean;
+  requiresLicense?: boolean;
 }
 
 export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
@@ -40,10 +41,11 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
     name: "Body Composition (Fat / Muscle / Bone)",
     category: "abdomen",
     categoryLabel: "Abdomen & Organs",
-    description: "Visceral adipose tissue (VAT), subcutaneous adipose tissue (SAT), skeletal muscle, and bone density analysis.",
+    description: "Visceral adipose tissue (VAT), subcutaneous adipose tissue (SAT), skeletal muscle, and bone density analysis (Requires free academic key).",
     structures: ["Visceral Fat", "Subcutaneous Fat", "Skeletal Muscle", "Intermuscular Fat", "Bone"],
     bodyParts: ["ABDOMEN", "PELVIS", "WHOLEBODY", "BODY"],
     modality: "CT",
+    requiresLicense: true,
   },
 
   // ── Musculoskeletal & Spine ──
@@ -66,6 +68,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
     structures: ["Femur", "Tibia", "Fibula", "Humerus", "Radius", "Ulna", "Clavicle", "Scapula", "Pelvis"],
     bodyParts: ["LEG", "ARM", "SHOULDER", "THIGH", "EXTREMITY", "WHOLEBODY"],
     modality: "CT",
+    requiresLicense: true,
   },
   {
     id: "thigh_shoulder_muscles",
@@ -76,6 +79,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
     structures: ["Quadriceps", "Hamstrings", "Gluteal Muscles", "Deltoid", "Rotator Cuff"],
     bodyParts: ["THIGH", "LEG", "SHOULDER", "ARM", "EXTREMITY"],
     modality: "CT",
+    requiresLicense: true,
   },
 
   // ── Cardiac & Vascular ──
@@ -88,6 +92,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
     structures: ["Left Ventricle", "Right Ventricle", "Left Atrium", "Right Atrium", "Myocardium", "Ascending Aorta", "Pulmonary Artery"],
     bodyParts: ["CHEST", "THORAX", "HEART", "CARDIAC"],
     modality: "CT",
+    requiresLicense: true,
   },
   {
     id: "coronary_arteries",
@@ -99,6 +104,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
     bodyParts: ["CHEST", "THORAX", "HEART", "CARDIAC"],
     modality: "CT",
     requiresContrast: true,
+    requiresLicense: true,
   },
   {
     id: "aortic_sinuses",
@@ -110,6 +116,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
     bodyParts: ["CHEST", "THORAX", "HEART", "CARDIAC"],
     modality: "CT",
     requiresContrast: true,
+    requiresLicense: true,
   },
 
   // ── Chest & Lungs ──
@@ -144,6 +151,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
     structures: ["Ventricles", "Brainstem", "Cerebellum", "Thalamus", "Hippocampus", "Basal Ganglia"],
     bodyParts: ["HEAD", "BRAIN", "SKULL"],
     modality: "CT",
+    requiresLicense: true,
   },
   {
     id: "cerebral_bleed",
