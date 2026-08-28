@@ -119,13 +119,13 @@ export default function ViewerPage() {
 
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [active3DPreset, setActive3DPreset] = useState<string>("CT-AAA");
-  const [activeRightSidebarTab, setActiveRightSidebarTab] = useState<"segmentation" | "presets">("segmentation");
+  const [activeRightSidebarTab, setActiveRightSidebarTab] = useState<"segmentation" | "presets" | "totalsegmentator">("segmentation");
 
   useEffect(() => {
     if (viewMode === "3d") {
       setActiveRightSidebarTab("presets");
     } else {
-      setActiveRightSidebarTab("segmentation");
+      setActiveRightSidebarTab((prev) => (prev === "presets" ? "segmentation" : prev));
     }
 
     requestAnimationFrame(() => {
@@ -163,6 +163,20 @@ export default function ViewerPage() {
     return activeSeries ? activeSeries.instances.map((i) => i.imageId) : [];
   }, [selectedSeriesUid, seriesList]);
 
+  const selectedSeriesMetadata = useMemo(() => {
+    if (!selectedSeriesUid) return undefined;
+    const series = seriesList.find((s) => s.seriesUid === selectedSeriesUid);
+    if (!series) return undefined;
+    const firstInst = series.instances[0];
+    return {
+      modality: series.modality,
+      bodyPartExamined: firstInst?.bodyPartExamined,
+      seriesDescription: series.seriesDescription,
+      contrastBolusAgent: firstInst?.contrastBolusAgent,
+      instanceCount: series.instanceCount,
+    };
+  }, [selectedSeriesUid, seriesList]);
+
   const patientDetails = useMemo(() => {
     if (instances.length === 0) return undefined;
     const first = instances[0];
@@ -175,16 +189,23 @@ export default function ViewerPage() {
     };
   }, [instances]);
 
-  const handleRunTotalSegmentator = async (seriesUid: string) => {
+  const handleRunTotalSegmentator = async (
+    seriesUid: string,
+    task: string = "total",
+    fast: boolean = true
+  ) => {
     if (!seriesUid || segmentingSeriesUid) return;
     setSegmentingSeriesUid(seriesUid);
     setTotalSegError(null);
     try {
       await totalsegmentatorService.run(
         patientDetails?.studyInstanceUid || "",
-        seriesUid
+        seriesUid,
+        task,
+        fast
       );
       await refetch();
+      setActiveRightSidebarTab("segmentation");
     } catch (err: any) {
       console.error("TotalSegmentator run failed:", err);
       setTotalSegError(err.message || "An unexpected error occurred during TotalSegmentator execution.");
@@ -202,12 +223,9 @@ export default function ViewerPage() {
       />
 
       <main
-        className={`viewer-layout ${isLeftSidebarOpen ? "left-open" : "left-collapsed"} ${segData || viewMode === "3d"
-            ? isSegPanelOpen
-              ? "with-seg-panel"
-              : "with-seg-collapsed"
-            : ""
-          }`}
+        className={`viewer-layout ${isLeftSidebarOpen ? "left-open" : "left-collapsed"} ${
+          isSegPanelOpen ? "with-seg-panel" : "with-seg-collapsed"
+        }`}
       >
         {seriesList.length > 0 && (
           <LeftPanel
@@ -217,13 +235,11 @@ export default function ViewerPage() {
             selectedSeriesUid={selectedSeriesUid}
             activeSegSeriesUid={activeSegSeriesUid}
             segDataMap={segDataMap}
-            segmentingSeriesUid={segmentingSeriesUid}
             onSelectSeries={setSelectedSeriesUid}
             onSelectSegSeries={(imageSeriesUid: string, segSeriesUid: string) => {
               setSelectedSeriesUid(imageSeriesUid);
               setActiveSegSeriesUid(segSeriesUid);
             }}
-            onRunTotalSegmentator={handleRunTotalSegmentator}
           />
         )}
 
@@ -241,29 +257,32 @@ export default function ViewerPage() {
           onDismissTotalSegError={() => setTotalSegError(null)}
         />
 
-        {(segData || viewMode === "3d") && (
-          <RightPanel
-            isOpen={isSegPanelOpen}
-            onToggle={() => setIsSegPanelOpen((prev) => !prev)}
-            segData={segData}
-            isLoading={isLoadingSeg}
-            segmentVisibility={segVisibility}
-            onToggleSegmentVisibility={(segNum: number) =>
-              setSegVisibility((prev) => ({
-                ...prev,
-                [segNum]: !(prev[segNum] ?? true),
-              }))
-            }
-            opacity={segmentOpacity}
-            onChangeOpacity={setSegmentOpacity}
-            activeTab={activeRightSidebarTab}
-            onChangeTab={setActiveRightSidebarTab}
-            active3DPreset={active3DPreset}
-            onSelect3DPreset={setActive3DPreset}
-            onResetCameras={resetMPRCameras}
-          />
-        )}
+        <RightPanel
+          isOpen={isSegPanelOpen}
+          onToggle={() => setIsSegPanelOpen((prev) => !prev)}
+          segData={segData}
+          isLoading={isLoadingSeg}
+          segmentVisibility={segVisibility}
+          onToggleSegmentVisibility={(segNum: number) =>
+            setSegVisibility((prev) => ({
+              ...prev,
+              [segNum]: !(prev[segNum] ?? true),
+            }))
+          }
+          opacity={segmentOpacity}
+          onChangeOpacity={setSegmentOpacity}
+          activeTab={activeRightSidebarTab}
+          onChangeTab={setActiveRightSidebarTab}
+          active3DPreset={active3DPreset}
+          onSelect3DPreset={setActive3DPreset}
+          onResetCameras={resetMPRCameras}
+          selectedSeriesUid={selectedSeriesUid}
+          selectedSeriesMetadata={selectedSeriesMetadata}
+          segmentingSeriesUid={segmentingSeriesUid}
+          onRunTotalSegmentator={handleRunTotalSegmentator}
+        />
       </main>
     </div>
   );
 }
+

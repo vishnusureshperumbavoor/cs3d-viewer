@@ -12,7 +12,12 @@ export const totalsegmentatorService = {
      * The backend runs TotalSegmentator, generates the DICOM SEG file,
      * uploads it to Orthanc, and returns the instanceId and seriesInstanceUid.
      */
-    run: async (studyInstanceUid: string, seriesInstanceUid: string): Promise<{ instanceId: string; seriesInstanceUid: string }> => {
+    run: async (
+        studyInstanceUid: string,
+        seriesInstanceUid: string,
+        task: string = "total",
+        fast: boolean = true
+    ): Promise<{ instanceId: string; seriesInstanceUid: string }> => {
         const response = await fetch("http://localhost:8000/api/segment/total", {
             method: "POST",
             headers: {
@@ -21,6 +26,8 @@ export const totalsegmentatorService = {
             body: JSON.stringify({
                 studyInstanceUid,
                 seriesInstanceUid,
+                task,
+                fast,
             }),
         });
 

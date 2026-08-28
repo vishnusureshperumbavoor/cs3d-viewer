@@ -1,6 +1,7 @@
 import React from "react";
 import { DicomSegData, SegmentStructure } from "../../services/dicom-seg-service";
 import { renderPresetIcon } from "./PresetIcons";
+import { TotalSegmentatorTab } from "./TotalSegmentatorTab";
 
 export const VOLUME_PRESETS = [
   {
@@ -49,11 +50,21 @@ type RightPanelProps = {
   onToggleSegmentVisibility: (segNum: number) => void;
   opacity: number;
   onChangeOpacity: (val: number) => void;
-  activeTab?: "segmentation" | "presets";
-  onChangeTab?: (tab: "segmentation" | "presets") => void;
+  activeTab?: "segmentation" | "presets" | "totalsegmentator";
+  onChangeTab?: (tab: "segmentation" | "presets" | "totalsegmentator") => void;
   active3DPreset?: string;
   onSelect3DPreset?: (presetId: string) => void;
   onResetCameras?: () => void;
+  selectedSeriesUid?: string | null;
+  selectedSeriesMetadata?: {
+    modality?: string;
+    bodyPartExamined?: string;
+    seriesDescription?: string;
+    contrastBolusAgent?: string;
+    instanceCount?: number;
+  };
+  segmentingSeriesUid?: string | null;
+  onRunTotalSegmentator?: (seriesUid: string, task?: string, fast?: boolean) => void;
 };
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -70,6 +81,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   active3DPreset = "CT-AAA",
   onSelect3DPreset,
   onResetCameras,
+  selectedSeriesUid,
+  selectedSeriesMetadata,
+  segmentingSeriesUid,
+  onRunTotalSegmentator,
 }) => {
   const segments = segData?.segments || [];
 
@@ -85,14 +100,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     });
   };
 
-  const handleTabClick = (tab: "segmentation" | "presets") => {
+  const handleTabClick = (tab: "segmentation" | "presets" | "totalsegmentator") => {
     onChangeTab?.(tab);
     if (!isOpen) {
       onToggle();
     }
   };
 
-  // If closed: show arrow pointing left and both icons vertically
+  // If closed: show arrow pointing left and icons vertically
   if (!isOpen) {
     return (
       <aside className="seg-panel collapsed">
@@ -118,26 +133,26 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         </button>
 
         <div className="seg-collapsed-vertical-items">
-          {/* Segmentation Icon */}
+          {/* 1. Segments Icon */}
           <button
             className={`seg-collapsed-icon-btn ${activeTab === "segmentation" ? "active" : ""}`}
             onClick={() => handleTabClick("segmentation")}
-            title="Segmentation"
-            aria-label="Segmentation"
+            title="Segments"
+            aria-label="Segments"
           >
-            <span style={{ fontSize: "1.25rem" }}>🧬</span>
+            <span style={{ fontSize: "1.15rem" }}>🧬</span>
           </button>
 
-          {/* 3D Volume Presets Icon */}
+          {/* 2. 3D presets Icon */}
           <button
             className={`seg-collapsed-icon-btn ${activeTab === "presets" ? "active" : ""}`}
             onClick={() => handleTabClick("presets")}
-            title="3D Volume Presets"
-            aria-label="3D Volume Presets"
+            title="3D presets"
+            aria-label="3D presets"
           >
             <svg
-              width="20"
-              height="20"
+              width="18"
+              height="18"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -149,6 +164,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
               <line x1="12" y1="22.08" x2="12" y2="12" />
             </svg>
+          </button>
+
+          {/* 3. totalSegmentor Icon (Last) */}
+          <button
+            className={`seg-collapsed-icon-btn ${activeTab === "totalsegmentator" ? "active" : ""}`}
+            onClick={() => handleTabClick("totalsegmentator")}
+            title="totalSegmentor"
+            aria-label="totalSegmentor"
+          >
+            <span style={{ fontSize: "1.15rem" }}>🧠</span>
           </button>
         </div>
       </aside>
@@ -181,28 +206,28 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             </svg>
           </button>
 
-          {/* Tab Navigation: Segmentation and 3D Presets icons */}
+          {/* Tab Navigation: Segments, 3D presets, totalSegmentor (Icon-only) */}
           <div className="seg-tab-buttons">
-            {/* Segmentation Tab Button */}
+            {/* 1. Segments */}
             <button
               className={`seg-tab-btn ${activeTab === "segmentation" ? "active" : ""}`}
               onClick={() => handleTabClick("segmentation")}
-              title="Segmentation"
-              aria-label="Segmentation"
+              title="Segments"
+              aria-label="Segments"
             >
-              <span style={{ fontSize: "1.2rem" }}>🧬</span>
+              <span style={{ fontSize: "1.15rem" }}>🧬</span>
             </button>
 
-            {/* 3D Presets Tab Button (on the right side of segmentation icon) */}
+            {/* 2. 3D presets */}
             <button
               className={`seg-tab-btn ${activeTab === "presets" ? "active" : ""}`}
               onClick={() => handleTabClick("presets")}
-              title="3D Volume Presets"
-              aria-label="3D Volume Presets"
+              title="3D presets"
+              aria-label="3D presets"
             >
               <svg
-                width="19"
-                height="19"
+                width="17"
+                height="17"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -215,12 +240,29 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 <line x1="12" y1="22.08" x2="12" y2="12" />
               </svg>
             </button>
+
+            {/* 3. totalSegmentor (Last) */}
+            <button
+              className={`seg-tab-btn ${activeTab === "totalsegmentator" ? "active" : ""}`}
+              onClick={() => handleTabClick("totalsegmentator")}
+              title="totalSegmentor"
+              aria-label="totalSegmentor"
+            >
+              <span style={{ fontSize: "1.15rem" }}>🧠</span>
+            </button>
           </div>
         </div>
       </div>
 
       <div className="seg-panel-body">
-        {activeTab === "segmentation" ? (
+        {activeTab === "totalsegmentator" ? (
+          <TotalSegmentatorTab
+            selectedSeriesUid={selectedSeriesUid}
+            selectedSeriesMetadata={selectedSeriesMetadata}
+            segmentingSeriesUid={segmentingSeriesUid}
+            onRunTotalSegmentator={onRunTotalSegmentator}
+          />
+        ) : activeTab === "segmentation" ? (
           <>
             {isLoading ? (
               <div className="seg-loading">

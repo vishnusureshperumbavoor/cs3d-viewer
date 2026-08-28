@@ -18,10 +18,8 @@ type LeftPanelProps = {
   selectedSeriesUid: string | null;
   activeSegSeriesUid: string | null;
   segDataMap: Record<string, DicomSegData>;
-  segmentingSeriesUid: string | null;
   onSelectSeries: (seriesUid: string) => void;
   onSelectSegSeries: (imageSeriesUid: string, segSeriesUid: string) => void;
-  onRunTotalSegmentator: (seriesUid: string) => void;
 };
 
 export const LeftPanel: React.FC<LeftPanelProps> = ({
@@ -31,10 +29,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   selectedSeriesUid,
   activeSegSeriesUid,
   segDataMap,
-  segmentingSeriesUid,
   onSelectSeries,
   onSelectSegSeries,
-  onRunTotalSegmentator,
 }) => {
   if (!isOpen) {
     return (
@@ -149,24 +145,6 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   </span>
                 </div>
               </button>
-
-              {/* Series-Level AI Actions Row */}
-              <div className="series-ai-actions-row">
-                <button
-                  className="series-ai-btn"
-                  disabled={segmentingSeriesUid === imageSeries.seriesUid}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRunTotalSegmentator(imageSeries.seriesUid);
-                  }}
-                  title="Run 3D TotalSegmentator AI on this series"
-                >
-                  <span>🧠 TotalSegmentator</span>
-                  {segmentingSeriesUid === imageSeries.seriesUid && (
-                    <span className="loading-spinner small" />
-                  )}
-                </button>
-              </div>
 
               {/* Associated Segmentation Cards */}
               {loadedSegs.map((segSeries) => {

@@ -6,8 +6,8 @@ import subprocess
 from fastapi import HTTPException
 from services.orthanc_client import orthanc_client
 
-def run_segmentation_pipeline(series_uid: str) -> dict:
-    """Download series, run TotalSegmentator, upload results to Orthanc, and return metadata."""
+def run_segmentation_pipeline(series_uid: str, task: str = "total", fast: bool = True) -> dict:
+    """Download series, run TotalSegmentator with requested task, upload results to Orthanc, and return metadata."""
     series_id = orthanc_client.lookup_series_id(series_uid)
     if not series_id:
         raise HTTPException(
@@ -15,7 +15,7 @@ def run_segmentation_pipeline(series_uid: str) -> dict:
             detail=f"Series with UID {series_uid} not found in Orthanc database."
         )
 
-    print(f"[TotalSegmentator] Orthanc series ID: {series_id}")
+    print(f"[TotalSegmentator] Orthanc series ID: {series_id}, Task: {task}, Fast: {fast}")
 
     temp_dir = tempfile.mkdtemp()
     dicom_input_dir = os.path.join(temp_dir, "input_slices")
@@ -47,7 +47,7 @@ def run_segmentation_pipeline(series_uid: str) -> dict:
             raise HTTPException(status_code=400, detail="Downloaded ZIP contains no slices.")
 
         # 3. Execute TotalSegmentator
-        print("[TotalSegmentator] Executing TotalSegmentator fast inference...")
+        print(f"[TotalSegmentator] Executing inference for task '{task}'...")
         # Check venv in project root or relative path
         backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         venv_bin = os.path.join(backend_dir, "venv", "bin", "TotalSegmentator")
@@ -57,8 +57,14 @@ def run_segmentation_pipeline(series_uid: str) -> dict:
             "-i", dicom_input_dir,
             "-o", output_seg_path,
             "--output_type", "dicom_seg",
-            "--fast"
         ]
+
+        # Add specialized task flag if specified
+        if task and task != "total":
+            cmd.extend(["--task", task])
+
+        if fast:
+            cmd.append("--fast")
 
         env = os.environ.copy()
         env["OMP_NUM_THREADS"] = "4"

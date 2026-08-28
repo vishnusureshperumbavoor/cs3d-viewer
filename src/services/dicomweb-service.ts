@@ -216,6 +216,9 @@ export const fetchStudyInstances = async (
       const patientId = getTagValue(instance, "00100020");
       const patientBirthDate = getTagValue(instance, "00100030");
       const patientSex = getTagValue(instance, "00100040");
+      const bodyPartExamined = getTagValue(instance, "00180015");
+      const contrastBolusAgent = getTagValue(instance, "00180010");
+      const studyDescription = getTagValue(instance, "00081030");
 
       return {
         studyInstanceUid,
@@ -232,6 +235,9 @@ export const fetchStudyInstances = async (
         patientId,
         patientBirthDate,
         patientSex,
+        bodyPartExamined,
+        contrastBolusAgent,
+        studyDescription,
       } as DicomWebInstance;
     })
     .filter((instance): instance is DicomWebInstance => instance !== null)

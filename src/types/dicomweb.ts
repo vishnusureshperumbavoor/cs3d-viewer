@@ -13,4 +13,8 @@ export type DicomWebInstance = {
   patientId?: string;
   patientBirthDate?: string;
   patientSex?: string;
+  bodyPartExamined?: string;
+  contrastBolusAgent?: string;
+  studyDescription?: string;
 };
+
