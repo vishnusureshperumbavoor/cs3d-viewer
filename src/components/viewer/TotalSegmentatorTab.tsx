@@ -52,6 +52,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   const [pushingTaskId, setPushingTaskId] = useState<string | null>(null);
   const [pushedTasks, setPushedTasks] = useState<Record<string, string>>({});
   const [hfFiles, setHfFiles] = useState<Array<{ filename: string; url: string }>>([]);
+  const [isSpecializedOpen, setIsSpecializedOpen] = useState<boolean>(false);
 
   const isSegmenting = Boolean(segmentingSeriesUid);
 
@@ -327,27 +328,50 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
       </div>
 
       {/* ── Specialized Models Catalog ── */}
-      <div className="totalseg-section" style={{ marginTop: "8px" }}>
-        <div className="totalseg-section-header">
+      <div className={`totalseg-section ${isSpecializedOpen ? "expanded" : "collapsed"}`} style={{ marginTop: "10px" }}>
+        <button
+          type="button"
+          className="totalseg-collapsible-header"
+          onClick={() => setIsSpecializedOpen((prev) => !prev)}
+          aria-expanded={isSpecializedOpen}
+        >
           <div className="totalseg-section-title-group">
             <span className="seg-section-title" style={{ padding: 0 }}>
               Specialized AI Models
             </span>
+            <span className="totalseg-count-badge">
+              {filteredTasks.length}
+            </span>
           </div>
-        </div>
+          <svg
+            className={`totalseg-collapse-chevron ${isSpecializedOpen ? "open" : ""}`}
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
 
-        {/* Category Pills */}
-        <div className="totalseg-category-pills">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              className={`totalseg-category-pill ${selectedCategory === cat.id ? "active" : ""}`}
-              onClick={() => setSelectedCategory(cat.id)}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+        {isSpecializedOpen && (
+          <>
+            {/* Category Pills */}
+            <div className="totalseg-category-pills" style={{ marginTop: "4px" }}>
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  className={`totalseg-category-pill ${selectedCategory === cat.id ? "active" : ""}`}
+                  onClick={() => setSelectedCategory(cat.id)}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
 
         {/* Task Cards */}
         <div className="totalseg-task-list">
@@ -530,7 +554,9 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
             );
           })}
         </div>
-      </div>
+        </>
+      )}
     </div>
-  );
+  </div>
+);
 };

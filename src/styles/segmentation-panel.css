@@ -580,6 +580,49 @@
   height: 12px;
 }
 
+/* ── Collapsible Section Header ── */
+.totalseg-collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.totalseg-collapsible-header:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.totalseg-count-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+}
+
+.totalseg-collapse-chevron {
+  color: #94a3b8;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+  transform: rotate(-90deg);
+  flex-shrink: 0;
+}
+
+.totalseg-collapse-chevron.open {
+  transform: rotate(0deg);
+  color: #38bdf8;
+}
+
 /* ── Category Pills ── */
 .totalseg-category-pills {
   display: flex;
