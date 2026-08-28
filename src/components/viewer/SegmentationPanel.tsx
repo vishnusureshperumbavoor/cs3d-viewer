@@ -1,5 +1,6 @@
 import React from "react";
 import { DicomSegData, SegmentStructure } from "../../services/dicom-seg-service";
+import { renderPresetIcon } from "./PresetIcons";
 
 export const VOLUME_PRESETS = [
   {
@@ -432,13 +433,20 @@ export const SegmentationPanel: React.FC<SegmentationPanelProps> = ({
                     className={`seg-preset-card ${isSelected ? "active" : ""}`}
                     onClick={() => onSelect3DPreset?.(p.id)}
                   >
-                    <div className="seg-preset-card-header">
-                      <span className="seg-preset-name">{p.label}</span>
-                      {isSelected && (
-                        <span className="seg-preset-active-badge">Active</span>
-                      )}
+                    <div className="seg-preset-card-body">
+                      <div className="seg-preset-icon-container">
+                        {renderPresetIcon(p.id)}
+                      </div>
+                      <div className="seg-preset-card-info">
+                        <div className="seg-preset-card-header">
+                          <span className="seg-preset-name">{p.label}</span>
+                          {isSelected && (
+                            <span className="seg-preset-active-badge">Active</span>
+                          )}
+                        </div>
+                        <span className="seg-preset-desc">{p.desc}</span>
+                      </div>
                     </div>
-                    <span className="seg-preset-desc">{p.desc}</span>
                   </button>
                 );
               })}

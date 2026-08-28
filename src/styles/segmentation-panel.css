@@ -350,7 +350,6 @@
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 3px;
   text-align: left;
   transition: all 0.18s ease;
 }
@@ -362,36 +361,84 @@
 }
 
 .seg-preset-card.active {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.5);
+}
+
+.seg-preset-card-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+.seg-preset-icon-container {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  transition: all 0.2s ease;
+  margin-top: 1px;
+}
+
+.seg-preset-card:hover .seg-preset-icon-container {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: scale(1.05);
+}
+
+.seg-preset-card.active .seg-preset-icon-container {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.seg-preset-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .seg-preset-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
 }
 
 .seg-preset-name {
   font-size: 0.84rem;
   font-weight: 600;
-  color: #ffffff;
+  color: #e2e8f0;
+  transition: color 0.18s ease;
 }
 
+.seg-preset-card:hover .seg-preset-name,
 .seg-preset-card.active .seg-preset-name {
-  color: #34d399;
+  color: #ffffff;
 }
 
 .seg-preset-active-badge {
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.2);
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   padding: 1px 6px;
   border-radius: 4px;
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
 }
 
 .seg-preset-desc {
