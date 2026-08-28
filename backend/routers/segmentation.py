@@ -51,3 +51,13 @@ async def run_totalsegmentator(request: SegmentationRequest):
             raise ex
         raise HTTPException(status_code=500, detail=str(ex))
 
+@router.delete("/series/{series_uid}")
+async def delete_segmentation_series(series_uid: str):
+    """Deletes a DICOM segmentation series from Orthanc."""
+    from services.orthanc_client import orthanc_client
+    print(f"[Router:Segmentation] Deleting series {series_uid} from Orthanc...")
+    success = orthanc_client.delete_series(series_uid)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Series with UID {series_uid} could not be deleted from Orthanc.")
+    return {"status": "success", "deletedSeriesUid": series_uid}
+

@@ -68,6 +68,7 @@ type RightPanelProps = {
   loadedSegs?: Array<{ seriesUid: string; seriesDescription: string; modality: string }>;
   segDataMap?: Record<string, DicomSegData>;
   onSelectSegSeries?: (imageSeriesUid: string, segSeriesUid: string) => void;
+  onDeleteSegSeries?: (segSeriesUid: string) => void;
 };
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -91,6 +92,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   loadedSegs,
   segDataMap,
   onSelectSegSeries,
+  onDeleteSegSeries,
 }) => {
   const segments = segData?.segments || [];
 
@@ -270,6 +272,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             loadedSegs={loadedSegs}
             segDataMap={segDataMap}
             onSelectSegSeries={onSelectSegSeries}
+            onDeleteSegSeries={onDeleteSegSeries}
             onSwitchTab={onChangeTab}
           />
         ) : activeTab === "segmentation" ? (

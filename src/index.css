@@ -619,15 +619,17 @@ body {
 }
 
 .viewer-sidebar {
-  background: rgba(10, 10, 10, 0.92);
+  background: rgba(10, 10, 14, 0.94);
   border: 1px solid var(--border);
   border-radius: 18px;
-  padding: 18px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-height: calc(100vh - 108px);
-  overflow-y: auto;
+  gap: 10px;
+  height: calc(100vh - 100px);
+  max-height: calc(100vh - 100px);
+  min-height: 0;
+  overflow: hidden;
   transition: width 0.2s ease, padding 0.2s ease;
 }
 

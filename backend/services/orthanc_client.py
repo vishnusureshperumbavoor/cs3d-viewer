@@ -71,6 +71,17 @@ class OrthancClient:
         response = requests.get(url, auth=self.auth, timeout=10)
         if response.status_code == 200:
             return response.json()
-        return []
+    def delete_series(self, series_uid: str) -> bool:
+        """Deletes a DICOM series from Orthanc by SeriesInstanceUID."""
+        series_id = self.lookup_series_id(series_uid)
+        if not series_id:
+            return False
+        url = f"{self.base_url}/series/{series_id}"
+        try:
+            response = requests.delete(url, auth=self.auth, timeout=10)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"[OrthancClient] Error deleting series {series_uid} ({series_id}): {e}")
+            return False
 
 orthanc_client = OrthancClient()

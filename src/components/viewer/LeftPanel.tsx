@@ -20,6 +20,7 @@ type LeftPanelProps = {
   segDataMap: Record<string, DicomSegData>;
   onSelectSeries: (seriesUid: string) => void;
   onSelectSegSeries: (imageSeriesUid: string, segSeriesUid: string) => void;
+  onDeleteSegSeries?: (segSeriesUid: string) => void;
 };
 
 export const LeftPanel: React.FC<LeftPanelProps> = ({
@@ -31,6 +32,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   segDataMap,
   onSelectSeries,
   onSelectSegSeries,
+  onDeleteSegSeries,
 }) => {
   if (!isOpen) {
     return (
@@ -155,8 +157,15 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   parsedSeg?.seriesDescription ||
                   "Segmentation";
 
+                const isTotalSeg = Boolean(
+                  segSeries.seriesDescription?.toLowerCase().includes("totalsegmentator") ||
+                  parsedSeg?.seriesDescription?.toLowerCase().includes("totalsegmentator") ||
+                  parsedSeg?.contentLabel?.toUpperCase().startsWith("TS_") ||
+                  parsedSeg?.contentDescription?.toLowerCase().includes("totalsegmentator")
+                );
+
                 return (
-                  <button
+                  <div
                     key={segSeries.seriesUid}
                     className={`series-card seg-series-card ${isSegSelected ? "active" : ""}`}
                     onClick={() => onSelectSegSeries(imageSeries.seriesUid, segSeries.seriesUid)}
@@ -174,11 +183,33 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                       <span className="series-desc" title={segTitle}>
                         {segTitle}
                       </span>
-                      <span className="series-count">
-                        {parsedSeg?.segments.length || 0} Segments
-                      </span>
+                      <div className="seg-card-sub-row">
+                        <span className="series-count">
+                          {parsedSeg?.segments.length || 0} Segments
+                        </span>
+                        {onDeleteSegSeries && isTotalSeg && (
+                          <button
+                            className="seg-series-delete-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Delete ${segTitle}?`)) {
+                                onDeleteSegSeries(segSeries.seriesUid);
+                              }
+                            }}
+                            title={`Delete ${segTitle}`}
+                            aria-label={`Delete ${segTitle}`}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              <line x1="10" y1="11" x2="10" y2="17" />
+                              <line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

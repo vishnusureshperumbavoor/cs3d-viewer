@@ -224,6 +224,19 @@ export default function ViewerPage() {
     setActiveRightSidebarTab("segmentation");
   };
 
+  const handleDeleteSegSeries = async (segSeriesUid: string) => {
+    if (!segSeriesUid) return;
+    try {
+      await totalsegmentatorService.deleteSegSeries(segSeriesUid);
+      if (activeSegSeriesUid === segSeriesUid) {
+        setActiveSegSeriesUid(null);
+      }
+      await refetch();
+    } catch (err) {
+      console.error("Failed to delete segmentation series:", err);
+    }
+  };
+
   return (
     <div className="app-shell">
       <ViewerHeader
@@ -250,6 +263,7 @@ export default function ViewerPage() {
               setSelectedSeriesUid(imageSeriesUid);
               setActiveSegSeriesUid(segSeriesUid);
             }}
+            onDeleteSegSeries={handleDeleteSegSeries}
           />
         )}
 
@@ -299,6 +313,7 @@ export default function ViewerPage() {
             setSelectedSeriesUid(imageSeriesUid);
             setActiveSegSeriesUid(segSeriesUid);
           }}
+          onDeleteSegSeries={handleDeleteSegSeries}
         />
       </main>
     </div>

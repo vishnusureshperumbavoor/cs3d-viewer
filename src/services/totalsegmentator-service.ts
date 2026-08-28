@@ -63,6 +63,21 @@ export const totalsegmentatorService = {
     },
 
     /**
+     * Deletes a generated segmentation series from Orthanc backend.
+     */
+    deleteSegSeries: async (seriesUid: string): Promise<boolean> => {
+        try {
+            const response = await fetch(`http://localhost:8000/api/segment/series/${encodeURIComponent(seriesUid)}`, {
+                method: "DELETE",
+            });
+            return response.ok;
+        } catch (e) {
+            console.error("Failed to delete segmentation series:", e);
+            return false;
+        }
+    },
+
+    /**
      * Reads, base64 encodes, and parses a local DICOM SEG file uploaded by the user.
      */
     parseFile: async (file: File): Promise<SegmentationResult> => {
