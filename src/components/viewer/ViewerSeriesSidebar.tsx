@@ -18,12 +18,9 @@ type ViewerSeriesSidebarProps = {
   selectedSeriesUid: string | null;
   activeSegSeriesUid: string | null;
   segDataMap: Record<string, DicomSegData>;
-  isAIActive: boolean;
-  loadingMedsamSeriesUid: string | null;
   segmentingSeriesUid: string | null;
   onSelectSeries: (seriesUid: string) => void;
   onSelectSegSeries: (imageSeriesUid: string, segSeriesUid: string) => void;
-  onToggleMedSAM: (seriesUid: string) => void;
   onRunTotalSegmentator: (seriesUid: string) => void;
 };
 
@@ -34,12 +31,9 @@ export const ViewerSeriesSidebar: React.FC<ViewerSeriesSidebarProps> = ({
   selectedSeriesUid,
   activeSegSeriesUid,
   segDataMap,
-  isAIActive,
-  loadingMedsamSeriesUid,
   segmentingSeriesUid,
   onSelectSeries,
   onSelectSegSeries,
-  onToggleMedSAM,
   onRunTotalSegmentator,
 }) => {
   if (!isOpen) {
@@ -159,21 +153,6 @@ export const ViewerSeriesSidebar: React.FC<ViewerSeriesSidebarProps> = ({
               {/* Series-Level AI Actions Row */}
               <div className="series-ai-actions-row">
                 <button
-                  className={`series-ai-btn ${isAIActive && isSelected ? "active" : ""}`}
-                  disabled={loadingMedsamSeriesUid === imageSeries.seriesUid}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleMedSAM(imageSeries.seriesUid);
-                  }}
-                  title="Interactive 2D MedSAM AI Segmentation on this series"
-                >
-                  <span>⚡ MedSAM</span>
-                  {loadingMedsamSeriesUid === imageSeries.seriesUid && (
-                    <span className="loading-spinner small" />
-                  )}
-                </button>
-
-                <button
                   className="series-ai-btn"
                   disabled={segmentingSeriesUid === imageSeries.seriesUid}
                   onClick={(e) => {
@@ -182,7 +161,7 @@ export const ViewerSeriesSidebar: React.FC<ViewerSeriesSidebarProps> = ({
                   }}
                   title="Run 3D TotalSegmentator AI on this series"
                 >
-                  <span>🧠 TotalSeg</span>
+                  <span>🧠 TotalSegmentator</span>
                   {segmentingSeriesUid === imageSeries.seriesUid && (
                     <span className="loading-spinner small" />
                   )}

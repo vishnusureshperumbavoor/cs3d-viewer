@@ -9,7 +9,6 @@ type ViewerMainViewportProps = {
   viewMode: "2d" | "3d";
   selectedSeriesUid: string | null;
   active3DPreset: string;
-  isAIActive: boolean;
   segData: DicomSegData | null;
   segVisibility: Record<number, boolean>;
   segmentOpacity: number;
@@ -24,7 +23,6 @@ export const ViewerMainViewport: React.FC<ViewerMainViewportProps> = ({
   viewMode,
   selectedSeriesUid,
   active3DPreset,
-  isAIActive,
   segData,
   segVisibility,
   segmentOpacity,
@@ -121,7 +119,6 @@ export const ViewerMainViewport: React.FC<ViewerMainViewportProps> = ({
             >
               <CornerstoneViewport
                 imageIds={activeImageIds}
-                isAIActive={isAIActive}
                 segData={segData}
                 segmentVisibility={segVisibility}
                 segmentOpacity={segmentOpacity}

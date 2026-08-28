@@ -1,12 +1,10 @@
 import { useCornerstoneViewport } from "../hooks/useCornerstoneViewport";
 import { ViewportOverlayCanvas } from "./viewport/ViewportOverlayCanvas";
 import { ViewportHUDOverlay } from "./viewport/ViewportHUDOverlay";
-
 import { DicomSegData } from "../services/dicom-seg-service";
 
 type CornerstoneViewportProps = {
   imageIds: string[];
-  isAIActive?: boolean;
   segData?: DicomSegData | null;
   segmentVisibility?: Record<number, boolean>;
   segmentOpacity?: number;
@@ -14,7 +12,6 @@ type CornerstoneViewportProps = {
 
 export default function CornerstoneViewport({
   imageIds,
-  isAIActive,
   segData,
   segmentVisibility,
   segmentOpacity,
@@ -24,11 +21,8 @@ export default function CornerstoneViewport({
     overlayCanvasRef,
     voiInfo,
     sliceInfo,
-    isSegmenting,
-    lastPoint,
   } = useCornerstoneViewport({
     imageIds,
-    isAIActive,
     segData,
     segmentVisibility,
     segmentOpacity,
@@ -47,10 +41,8 @@ export default function CornerstoneViewport({
       <ViewportHUDOverlay
         voiInfo={voiInfo}
         sliceInfo={sliceInfo}
-        isSegmenting={isSegmenting}
-        lastPoint={lastPoint}
-        isAIActive={isAIActive}
       />
     </div>
   );
 }
+

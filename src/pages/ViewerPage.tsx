@@ -11,7 +11,6 @@ import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS } from "../utils/mpr-utils";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
 import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
-import { medsamONNXService } from "../services/medsam-onnx-service";
 
 export default function ViewerPage() {
   const { instances, error, refetch } = useStudyImages();
@@ -59,7 +58,6 @@ export default function ViewerPage() {
   }, [seriesMap]);
 
   const [selectedSeriesUid, setSelectedSeriesUid] = useState<string | null>(null);
-  const [isAIActive, setIsAIActive] = useState(false);
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
 
   // DICOM SEG datasets state
@@ -119,7 +117,6 @@ export default function ViewerPage() {
     }
   }, [segData]);
 
-  // View modes and presets
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [active3DPreset, setActive3DPreset] = useState<string>("CT-AAA");
   const [activeRightSidebarTab, setActiveRightSidebarTab] = useState<"segmentation" | "presets">("segmentation");
@@ -148,7 +145,6 @@ export default function ViewerPage() {
   }, [viewMode]);
 
   const [segmentingSeriesUid, setSegmentingSeriesUid] = useState<string | null>(null);
-  const [loadingMedsamSeriesUid, setLoadingMedsamSeriesUid] = useState<string | null>(null);
   const [totalSegError, setTotalSegError] = useState<string | null>(null);
 
   // Set default selected series once seriesList is loaded (pick first non-SEG image series)
@@ -178,29 +174,6 @@ export default function ViewerPage() {
       studyInstanceUid: first.studyInstanceUid,
     };
   }, [instances]);
-
-  const handleToggleMedSAM = async (seriesUid: string) => {
-    if (selectedSeriesUid !== seriesUid) {
-      setSelectedSeriesUid(seriesUid);
-    }
-    if (viewMode !== "2d") {
-      setViewMode("2d");
-    }
-
-    if (!isAIActive || selectedSeriesUid !== seriesUid) {
-      setLoadingMedsamSeriesUid(seriesUid);
-      try {
-        const ok = await medsamONNXService.init();
-        if (ok) {
-          setIsAIActive(true);
-        }
-      } finally {
-        setLoadingMedsamSeriesUid(null);
-      }
-    } else {
-      setIsAIActive(false);
-    }
-  };
 
   const handleRunTotalSegmentator = async (seriesUid: string) => {
     if (!seriesUid || segmentingSeriesUid) return;
@@ -244,15 +217,12 @@ export default function ViewerPage() {
             selectedSeriesUid={selectedSeriesUid}
             activeSegSeriesUid={activeSegSeriesUid}
             segDataMap={segDataMap}
-            isAIActive={isAIActive}
-            loadingMedsamSeriesUid={loadingMedsamSeriesUid}
             segmentingSeriesUid={segmentingSeriesUid}
             onSelectSeries={setSelectedSeriesUid}
             onSelectSegSeries={(imageSeriesUid, segSeriesUid) => {
               setSelectedSeriesUid(imageSeriesUid);
               setActiveSegSeriesUid(segSeriesUid);
             }}
-            onToggleMedSAM={handleToggleMedSAM}
             onRunTotalSegmentator={handleRunTotalSegmentator}
           />
         )}
@@ -263,7 +233,6 @@ export default function ViewerPage() {
           viewMode={viewMode}
           selectedSeriesUid={selectedSeriesUid}
           active3DPreset={active3DPreset}
-          isAIActive={isAIActive}
           segData={segData}
           segVisibility={segVisibility}
           segmentOpacity={segmentOpacity}

@@ -9,12 +9,10 @@ import {
   StackScrollTool,
 } from "@cornerstonejs/tools";
 import { initCornerstone } from "../services/cornerstone-service";
-import { medsamONNXService, PointPrompt } from "../services/medsam-onnx-service";
 import { DicomSegData } from "../services/dicom-seg-service";
 
 type UseCornerstoneViewportParams = {
   imageIds: string[];
-  isAIActive?: boolean;
   segData?: DicomSegData | null;
   segmentVisibility?: Record<number, boolean>;
   segmentOpacity?: number;
@@ -22,7 +20,6 @@ type UseCornerstoneViewportParams = {
 
 export function useCornerstoneViewport({
   imageIds,
-  isAIActive,
   segData,
   segmentVisibility,
   segmentOpacity = 0.5,
@@ -37,8 +34,7 @@ export function useCornerstoneViewport({
 
   const [voiInfo, setVoiInfo] = useState<{ ww: number; wc: number } | null>(null);
   const [sliceInfo, setSliceInfo] = useState<{ current: number; total: number } | null>(null);
-  const [isSegmenting, setIsSegmenting] = useState<boolean>(false);
-  const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(null);
+
 
   const renderingEngineId = "mainViewerRenderingEngine";
   const viewportId = "CT_AXIAL_STACK";
@@ -223,71 +219,6 @@ export function useCornerstoneViewport({
       }
     };
 
-    const handleCanvasClick = async (e: MouseEvent) => {
-      if (!isAIActive) return;
-
-      const rect = element.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
-
-      setLastPoint({ x: Math.round(clickX), y: Math.round(clickY) });
-      setIsSegmenting(true);
-
-      const mockEmbedding = new Float32Array(1 * 256 * 64 * 64);
-      for (let i = 0; i < mockEmbedding.length; i++) {
-        mockEmbedding[i] = Math.random() * 0.1;
-      }
-
-      const points: PointPrompt[] = [{ x: clickX, y: clickY, label: 1 }];
-      const currentImageId = imageIds[0] || "image_0";
-
-      const binaryMask = await medsamONNXService.predictMask(
-        currentImageId,
-        mockEmbedding,
-        points,
-        [rect.width, rect.height]
-      );
-
-      setIsSegmenting(false);
-
-      if (binaryMask && overlayCanvasRef.current) {
-        const canvas = overlayCanvasRef.current;
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-          const imgData = ctx.createImageData(canvas.width, canvas.height);
-          const radius = 60;
-
-          for (let y = 0; y < canvas.height; y++) {
-            for (let x = 0; x < canvas.width; x++) {
-              const dx = x - clickX;
-              const dy = y - clickY;
-              const idx = (y * canvas.width + x) * 4;
-
-              if (dx * dx + dy * dy <= radius * radius) {
-                imgData.data[idx] = 0;
-                imgData.data[idx + 1] = 242;
-                imgData.data[idx + 2] = 254;
-                imgData.data[idx + 3] = 130;
-              }
-            }
-          }
-          ctx.putImageData(imgData, 0, 0);
-
-          ctx.beginPath();
-          ctx.arc(clickX, clickY, 5, 0, 2 * Math.PI);
-          ctx.fillStyle = "#00ffcc";
-          ctx.fill();
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = "#ffffff";
-          ctx.stroke();
-        }
-      }
-    };
-
     const setup = async () => {
       await initCornerstone();
       if (isCancelled) return;
@@ -341,7 +272,6 @@ export function useCornerstoneViewport({
       element.addEventListener(CoreEnums.Events.IMAGE_RENDERED as any, updateVoiDisplay);
       element.addEventListener(CoreEnums.Events.STACK_NEW_IMAGE as any, updateVoiDisplay);
       element.addEventListener(CoreEnums.Events.CAMERA_MODIFIED as any, updateVoiDisplay);
-      element.addEventListener("click", handleCanvasClick);
 
       resizeObserver = new ResizeObserver(() => {
         const engine = getRenderingEngine(renderingEngineId);
@@ -375,6 +305,7 @@ export function useCornerstoneViewport({
       }
     };
 
+
     void setup();
 
     return () => {
@@ -389,7 +320,6 @@ export function useCornerstoneViewport({
         element.removeEventListener(CoreEnums.Events.IMAGE_RENDERED as any, updateVoiDisplay);
         element.removeEventListener(CoreEnums.Events.STACK_NEW_IMAGE as any, updateVoiDisplay);
         element.removeEventListener(CoreEnums.Events.CAMERA_MODIFIED as any, updateVoiDisplay);
-        element.removeEventListener("click", handleCanvasClick);
       }
 
       const toolGroup = ToolGroupManager.getToolGroup(toolGroupId);
@@ -406,14 +336,13 @@ export function useCornerstoneViewport({
         } catch (e) { }
       }
     };
-  }, [imageIds, isAIActive]);
+  }, [imageIds]);
 
   return {
     viewportRef,
     overlayCanvasRef,
     voiInfo,
     sliceInfo,
-    isSegmenting,
-    lastPoint,
   };
 }
+
