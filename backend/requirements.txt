@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 requests
 totalsegmentator
-highdicom
 pydicom
+huggingface_hub
 python-multipart
+
