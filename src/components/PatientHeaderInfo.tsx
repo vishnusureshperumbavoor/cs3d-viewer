@@ -1,5 +1,3 @@
-import React from "react";
-
 type PatientHeaderInfoProps = {
   patientName?: string;
   patientId?: string;

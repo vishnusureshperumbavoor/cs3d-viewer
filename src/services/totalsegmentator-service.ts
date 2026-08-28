@@ -8,10 +8,16 @@ export interface SegmentationResult {
 
 export const totalsegmentatorService = {
     /**
-     * Triggers TotalSegmentator run on FastAPI, downloads the resulting SEG file from Orthanc,
-     * parses it, and maps it to coordinates and structures.
+     * Triggers TotalSegmentator on FastAPI backend.
+     * The backend runs TotalSegmentator, generates the DICOM SEG file,
+     * uploads it to Orthanc, and returns the instanceId and seriesInstanceUid.
      */
-    run: async (studyInstanceUid: string, seriesInstanceUid: string): Promise<SegmentationResult> => {
+    run: async (
+        studyInstanceUid: string,
+        seriesInstanceUid: string,
+        task: string = "total",
+        fast: boolean = true
+    ): Promise<{ instanceId: string; seriesInstanceUid: string }> => {
         const response = await fetch("http://localhost:8000/api/segment/total", {
             method: "POST",
             headers: {
@@ -20,6 +26,8 @@ export const totalsegmentatorService = {
             body: JSON.stringify({
                 studyInstanceUid,
                 seriesInstanceUid,
+                task,
+                fast,
             }),
         });
 
@@ -33,38 +41,81 @@ export const totalsegmentatorService = {
         }
 
         const data = await response.json();
-        const { instanceId } = data;
+        return {
+            instanceId: data.instanceId,
+            seriesInstanceUid: data.seriesInstanceUid,
+        };
+    },
 
-        // Download generated SEG
-        const fileResponse = await fetch(`/instances/${instanceId}/file`);
-        if (!fileResponse.ok) {
-            throw new Error("Failed to download generated DICOM SEG from Orthanc.");
+    /**
+     * Fetches the list of TotalSegmentator model tasks that are already downloaded & cached locally.
+     */
+    getInstalledTasks: async (): Promise<string[]> => {
+        try {
+            const response = await fetch("http://localhost:8000/api/segment/installed-models");
+            if (!response.ok) return [];
+            const data = await response.json();
+            return data.installedTasks || [];
+        } catch (e) {
+            console.warn("Failed to fetch installed TotalSegmentator models:", e);
+            return [];
         }
+    },
 
-        const buffer = await fileResponse.arrayBuffer();
-        const uint8 = new Uint8Array(buffer);
-        let binary = "";
-        for (let i = 0; i < uint8.length; i++) {
-            binary += String.fromCharCode(uint8[i]);
+    /**
+     * Deletes a generated segmentation series from Orthanc backend.
+     */
+    deleteSegSeries: async (seriesUid: string): Promise<boolean> => {
+        try {
+            const response = await fetch(`http://localhost:8000/api/segment/series/${encodeURIComponent(seriesUid)}`, {
+                method: "DELETE",
+            });
+            return response.ok;
+        } catch (e) {
+            console.error("Failed to delete segmentation series:", e);
+            return false;
         }
-        const base64 = btoa(binary);
-        const dataUrl = `data:application/octet-stream;base64,${base64}`;
+    },
 
-        // Parse SEG
-        const parsedLabelmaps = await parseSeg(dataUrl);
-        const dataset = (window as any).lastParsedSegDataset;
-        const info = extractSegmentationInfo(dataset, parsedLabelmaps);
-
-        const segmentVisibility: Record<number, boolean> = {};
-        info.forEach((s: any) => {
-            segmentVisibility[s.segment_number] = true;
+    /**
+     * Pushes a generated segmentation series to Hugging Face dataset repo.
+     */
+    pushSegToHuggingFace: async (seriesUid: string, studyFolder?: string): Promise<{ status: string; url: string; filename: string }> => {
+        const response = await fetch("http://localhost:8000/api/segment/push-hf", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                seriesInstanceUid: seriesUid,
+                studyFolder: studyFolder,
+            }),
         });
 
-        return {
-            parsedLabelmaps,
-            segStructures: info,
-            segmentVisibility,
-        };
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(errText || "Failed to push segmentation to Hugging Face.");
+        }
+
+        return await response.json();
+    },
+
+    /**
+     * Retrieves the list of segmentation files currently uploaded to Hugging Face.
+     */
+    getHFSegmentations: async (studyFolder?: string): Promise<Array<{ filename: string; path: string; url: string }>> => {
+        try {
+            const url = studyFolder
+                ? `http://localhost:8000/api/segment/hf-files?study_folder=${encodeURIComponent(studyFolder)}`
+                : "http://localhost:8000/api/segment/hf-files";
+            const response = await fetch(url);
+            if (!response.ok) return [];
+            const data = await response.json();
+            return data.files || [];
+        } catch (e) {
+            console.warn("Failed to fetch Hugging Face segmentations:", e);
+            return [];
+        }
     },
 
     /**

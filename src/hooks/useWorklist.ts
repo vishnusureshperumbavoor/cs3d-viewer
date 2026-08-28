@@ -62,5 +62,6 @@ export const useWorklist = () => {
     error,
     studies,
     handleSearchSubmit,
+    refetch: performSearch,
   };
 };

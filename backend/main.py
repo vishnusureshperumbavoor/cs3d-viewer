@@ -1,10 +1,12 @@
-import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from segmentator import run_segmentation_pipeline
+from routers import segmentation_router, dataset_router
 
-app = FastAPI(title="TotalSegmentator AI Backend")
+app = FastAPI(
+    title="3D DICOM Viewer AI Backend",
+    version="1.0.0",
+    description="FastAPI Backend for 3D DICOM Segmentation & Medical AI Inference",
+)
 
 # Enable CORS for the frontend
 app.add_middleware(
@@ -15,24 +17,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class SegmentationRequest(BaseModel):
-    studyInstanceUid: str
-    seriesInstanceUid: str
+# Mount modular routers under /api
+app.include_router(segmentation_router, prefix="/api")
+app.include_router(dataset_router, prefix="/api")
 
-@app.post("/api/segment/total")
-async def run_totalsegmentator(request: SegmentationRequest):
-    series_uid = request.seriesInstanceUid
-    print(f"Received segmentation request for series UID: {series_uid}")
-    try:
-        result = run_segmentation_pipeline(series_uid)
-        return result
-    except Exception as ex:
-        print(f"Error running segmentation: {ex}")
-        if isinstance(ex, HTTPException):
-            raise ex
-        raise HTTPException(status_code=500, detail=str(ex))
+@app.get("/health")
+def health_check():
+    """Simple health check endpoint."""
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

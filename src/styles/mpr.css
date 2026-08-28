@@ -1,0 +1,184 @@
+/* ── Multiplanar Reconstruction (MPR) 2×2 Layout ── */
+.mpr-main-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #000000;
+  overflow: hidden;
+}
+
+.mpr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  width: 100%;
+  height: 100%;
+  gap: 2px;
+  background: #111115;
+}
+
+.mpr-grid.maximized {
+  display: flex;
+}
+
+.mpr-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #020204;
+  overflow: hidden;
+  cursor: default;
+}
+
+.mpr-cell.is-hidden {
+  display: none !important;
+}
+
+.mpr-cell.is-maximized {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.mpr-viewport-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Viewport HUD Overlays ── */
+.mpr-hud-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000;
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+}
+
+.mpr-hud-title {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.mpr-hud-row {
+  font-size: 0.8rem;
+  opacity: 0.95;
+}
+
+.mpr-preset-pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.mpr-preset-pill {
+  background: rgba(30, 30, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mpr-preset-pill:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(50, 50, 50, 0.9);
+}
+
+.mpr-preset-pill.active {
+  background: rgba(244, 63, 94, 0.25);
+  color: #fda4af;
+  border-color: #f43f5e;
+}
+
+.mpr-preset-pill.reset {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.mpr-preset-pill.reset:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* ── Loading & Error Overlays ── */
+.mpr-loading-overlay,
+.mpr-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 20;
+}
+
+.mpr-loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 32px;
+  border-radius: 16px;
+  background: rgba(18, 18, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+.mpr-loading-text strong {
+  display: block;
+  font-size: 1rem;
+  color: #f1f5f9;
+}
+
+.mpr-loading-text span {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.mpr-progress-track {
+  width: 220px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.mpr-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 9999px;
+  transition: width 0.2s ease;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+}
+
+.mpr-error-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 14px;
+  background: rgba(26, 12, 14, 0.94);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
