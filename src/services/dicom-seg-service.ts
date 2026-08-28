@@ -7,6 +7,8 @@ export interface SegmentStructure {
   segmentNumber: number;
   label: string;
   description: string;
+  codeMeaning?: string;
+  algorithmName?: string;
   color: string;
   rgba: [number, number, number];
   voxelCount: number;
@@ -16,6 +18,10 @@ export interface SegmentStructure {
 export interface DicomSegData {
   sopInstanceUid: string;
   seriesInstanceUid: string;
+  seriesDescription?: string;
+  manufacturer?: string;
+  contentLabel?: string;
+  contentDescription?: string;
   segments: SegmentStructure[];
   sliceMaskMap: Map<string, Record<number, Uint8Array>>;
   rows: number;
@@ -198,12 +204,18 @@ export const dicomSegService = {
       const segNum = s.SegmentNumber !== undefined ? Number(s.SegmentNumber) : idx + 1;
       const label = s.SegmentLabel || `Segment ${segNum}`;
       const description = s.SegmentDescription || label;
+      const codeMeaning =
+        s.SegmentedPropertyTypeCodeSequence?.[0]?.CodeMeaning ||
+        s.SegmentedPropertyCategoryCodeSequence?.[0]?.CodeMeaning;
+      const algorithmName = s.SegmentAlgorithmName || s.SegmentAlgorithmType;
       const colorDef = getSegmentColor(segNum);
 
       return {
         segmentNumber: segNum,
         label,
         description,
+        codeMeaning,
+        algorithmName,
         color: colorDef.hex,
         rgba: colorDef.rgba,
         voxelCount: 0,
@@ -237,34 +249,17 @@ export const dicomSegService = {
       if (!sop) continue;
 
       const frameOffset = i * frameByteLength;
-
-      // Fast check: verify if the frame has any non-zero bytes
-      let hasPixels = false;
-      for (let b = 0; b < frameByteLength; b++) {
-        if (pixelData[frameOffset + b] !== 0) {
-          hasPixels = true;
-          break;
-        }
-      }
-
-      if (!hasPixels) continue;
-
-      // Unpack 1-bit little-endian mask into 1-byte per pixel
+      const frameBytes = pixelData.subarray(frameOffset, frameOffset + frameByteLength);
       const unpacked = new Uint8Array(framePixelCount);
+
       let activeCount = 0;
-
-      for (let b = 0; b < frameByteLength; b++) {
-        const byte = pixelData[frameOffset + b];
-        if (byte === 0) continue;
-
-        for (let bit = 0; bit < 8; bit++) {
-          if ((byte & (1 << bit)) !== 0) {
-            const pxIdx = b * 8 + bit;
-            if (pxIdx < framePixelCount) {
-              unpacked[pxIdx] = 1;
-              activeCount++;
-            }
-          }
+      for (let p = 0; p < framePixelCount; p++) {
+        const byteIdx = Math.floor(p / 8);
+        const bitIdx = p % 8;
+        const isSet = (frameBytes[byteIdx] & (1 << bitIdx)) !== 0;
+        if (isSet) {
+          unpacked[p] = 1;
+          activeCount++;
         }
       }
 
@@ -290,6 +285,10 @@ export const dicomSegService = {
     return {
       sopInstanceUid: segInstance.sopInstanceUid,
       seriesInstanceUid: segInstance.seriesInstanceUid,
+      seriesDescription: dataset.SeriesDescription,
+      manufacturer: dataset.Manufacturer,
+      contentLabel: dataset.ContentLabel,
+      contentDescription: dataset.ContentDescription,
       segments,
       sliceMaskMap,
       rows,

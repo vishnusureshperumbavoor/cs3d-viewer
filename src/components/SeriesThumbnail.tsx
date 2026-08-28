@@ -4,9 +4,10 @@ import { initCornerstone } from "../services/cornerstone-service";
 
 type SeriesThumbnailProps = {
   imageId: string;
+  modality?: string;
 };
 
-export default function SeriesThumbnail({ imageId }: SeriesThumbnailProps) {
+export default function SeriesThumbnail({ imageId, modality }: SeriesThumbnailProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -93,12 +94,17 @@ export default function SeriesThumbnail({ imageId }: SeriesThumbnailProps) {
         style={{
           width: "100%",
           height: "100%",
-          minWidth: "60px",
-          minHeight: "60px",
+          minWidth: "52px",
+          minHeight: "52px",
           objectFit: "cover",
           display: error ? "none" : "block",
         }}
       />
+      {modality && (
+        <div className="thumbnail-modality-badge">
+          {modality}
+        </div>
+      )}
       {loading && (
         <div className="thumbnail-overlay">
           <span className="loading-spinner small" />

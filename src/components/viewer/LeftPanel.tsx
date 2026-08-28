@@ -130,13 +130,13 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
               <button
                 className={`series-card ${isSelected ? "active" : ""}`}
                 onClick={() => onSelectSeries(imageSeries.seriesUid)}
-                title={imageSeries.seriesDescription}
+                title={`${imageSeries.seriesDescription} (${imageSeries.modality})`}
               >
-                <SeriesThumbnail imageId={imageSeries.thumbnailImageId} />
+                <SeriesThumbnail
+                  imageId={imageSeries.thumbnailImageId}
+                  modality={imageSeries.modality}
+                />
                 <div className="series-info">
-                  <span className="series-modality">
-                    {imageSeries.modality}
-                  </span>
                   <span className="series-desc" title={imageSeries.seriesDescription}>
                     {imageSeries.seriesDescription}
                   </span>
@@ -150,28 +150,32 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
               {loadedSegs.map((segSeries) => {
                 const isSegSelected = activeSegSeriesUid === segSeries.seriesUid;
                 const parsedSeg = segDataMap[segSeries.seriesUid];
+                const segTitle =
+                  segSeries.seriesDescription ||
+                  parsedSeg?.seriesDescription ||
+                  "Segmentation";
 
                 return (
                   <button
                     key={segSeries.seriesUid}
                     className={`series-card seg-series-card ${isSegSelected ? "active" : ""}`}
                     onClick={() => onSelectSegSeries(imageSeries.seriesUid, segSeries.seriesUid)}
-                    title={segSeries.seriesDescription}
+                    title={segTitle}
                   >
                     <div className="series-thumbnail-container seg-thumb-container">
-                      <span style={{ fontSize: "1.85rem" }} role="img" aria-label="Segmentation">
+                      <span style={{ fontSize: "1.5rem" }} role="img" aria-label="Segmentation">
                         🧬
                       </span>
+                      <div className="thumbnail-modality-badge">
+                        {segSeries.modality || "SEG"}
+                      </div>
                     </div>
                     <div className="series-info">
-                      <span className="series-modality seg-modality-badge">
-                        {segSeries.modality}
-                      </span>
-                      <span className="series-desc" title={segSeries.seriesDescription}>
-                        {segSeries.seriesDescription || "Segmentation"}
+                      <span className="series-desc" title={segTitle}>
+                        {segTitle}
                       </span>
                       <span className="series-count">
-                        {parsedSeg?.segments.length} Segments
+                        {parsedSeg?.segments.length || 0} Segments
                       </span>
                     </div>
                   </button>
