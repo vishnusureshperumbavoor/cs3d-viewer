@@ -52,21 +52,39 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
     return () => clearInterval(timer);
   }, [status]);
 
-  // 2. Prevent Screen Sleep / Turn-Off during AI Inference (Screen Wake Lock API)
+  // 2. Prevent Screen Sleep / Turn-Off during AI Inference (Auto-Reacquiring on Tab Switch)
   useEffect(() => {
+    if (status !== "running") {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+      return;
+    }
+
     const acquireWakeLock = async () => {
       try {
-        if ("wakeLock" in navigator && status === "running") {
+        if ("wakeLock" in navigator && document.visibilityState === "visible") {
           wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
         }
       } catch (err) {
-        console.warn("Screen wake lock request failed or not supported:", err);
+        console.warn("[ScreenWakeLock] Failed to acquire lock:", err);
       }
     };
 
     void acquireWakeLock();
 
+    // Re-acquire lock whenever the user switches back to this tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && status === "running") {
+        void acquireWakeLock();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (wakeLockRef.current) {
         wakeLockRef.current.release().catch(() => {});
         wakeLockRef.current = null;
@@ -183,11 +201,23 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
           })}
         </div>
 
+        {/* Close Button on Modal (Available when completed) */}
+        {isCompleted && (
+          <button
+            className="totalseg-modal-close-btn"
+            onClick={onDismiss}
+            aria-label="Close"
+            title="Close"
+          >
+            ✕
+          </button>
+        )}
+
         {/* Footer Actions */}
         {isCompleted ? (
           <div className="totalseg-completed-footer">
             <button className="totalseg-done-btn" onClick={onDismiss}>
-              <span>👁️ View Segmentation</span>
+              <span>Close</span>
             </button>
           </div>
         ) : (

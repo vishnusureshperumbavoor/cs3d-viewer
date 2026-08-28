@@ -1221,6 +1221,30 @@
   font-size: 0.65rem;
 }
 
+.totalseg-modal-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  transition: all 0.15s ease;
+  z-index: 10;
+}
+
+.totalseg-modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
 .totalseg-completed-footer {
   width: 100%;
   display: flex;
@@ -1232,26 +1256,24 @@
 
 .totalseg-done-btn {
   width: 100%;
-  background: linear-gradient(135deg, #10b981, #059669);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   color: #ffffff;
-  font-size: 0.88rem;
-  font-weight: 700;
-  padding: 9px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 
 .totalseg-done-btn:hover {
-  background: linear-gradient(135deg, #059669, #047857);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
 }
 
 .totalseg-hardware-badge {
