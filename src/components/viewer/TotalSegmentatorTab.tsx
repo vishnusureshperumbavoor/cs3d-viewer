@@ -51,12 +51,14 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   const [installedTasks, setInstalledTasks] = useState<string[]>([]);
   const [pushingTaskId, setPushingTaskId] = useState<string | null>(null);
   const [pushedTasks, setPushedTasks] = useState<Record<string, string>>({});
+  const [hfFiles, setHfFiles] = useState<Array<{ filename: string; url: string }>>([]);
 
   const isSegmenting = Boolean(segmentingSeriesUid);
 
   useEffect(() => {
     totalsegmentatorService.getInstalledTasks().then(setInstalledTasks);
-  }, [segmentingSeriesUid]);
+    totalsegmentatorService.getHFSegmentations().then(setHfFiles);
+  }, [segmentingSeriesUid, loadedSegs.length]);
 
   const handlePushToHF = async (task: TotalSegTask, completedSeg: { seriesUid: string }) => {
     if (pushingTaskId) return;
@@ -64,6 +66,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
     try {
       const res = await totalsegmentatorService.pushSegToHuggingFace(completedSeg.seriesUid);
       setPushedTasks((prev) => ({ ...prev, [task.id]: res.url }));
+      const updated = await totalsegmentatorService.getHFSegmentations();
+      setHfFiles(updated);
     } catch (err: any) {
       console.error("Push to HF failed:", err);
       alert(err.message || "Failed to push segmentation to Hugging Face.");
@@ -248,31 +252,53 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                           </svg>
                         </button>
                       )}
-                      <button
-                        className={`totalseg-hf-push-btn ${pushedTasks[task.id] ? "pushed" : ""}`}
-                        disabled={Boolean(pushingTaskId) || isSegmenting}
-                        onClick={() => {
-                          if (pushedTasks[task.id]) {
-                            window.open(pushedTasks[task.id], "_blank");
-                          } else if (completedSeg) {
-                            handlePushToHF(task, completedSeg);
-                          }
-                        }}
-                        title={
-                          pushedTasks[task.id]
-                            ? "Pushed to Hugging Face! Click to open dataset repository"
-                            : `Push ${task.name} segmentation to Hugging Face dataset`
-                        }
-                        aria-label={`Push ${task.name} segmentation to Hugging Face`}
-                      >
-                        {pushingTaskId === task.id ? (
-                          <span className="loading-spinner small" />
-                        ) : pushedTasks[task.id] ? (
-                          <span style={{ fontSize: "0.72rem", fontWeight: 700 }}>✓ HF</span>
-                        ) : (
-                          <span style={{ fontSize: "0.85rem" }} role="img" aria-label="Hugging Face">🤗</span>
-                        )}
-                      </button>
+                      {(() => {
+                        const isTaskUploadedToHF = Boolean(
+                          pushedTasks[task.id] ||
+                          hfFiles.some((f) => {
+                            const taskClean = task.id.replace(/_/g, "").toLowerCase();
+                            const fnClean = f.filename.replace(/_/g, "").toLowerCase();
+                            return fnClean.includes(taskClean) || taskClean.includes(fnClean.replace(".dcm", ""));
+                          })
+                        );
+                        const taskHfUrl = pushedTasks[task.id] || hfFiles[0]?.url || "https://huggingface.co/datasets/vishnusureshperumbavoor/dicom_public_dataset";
+
+                        return (
+                          <button
+                            className={`totalseg-hf-push-btn ${isTaskUploadedToHF ? "pushed" : ""}`}
+                            disabled={Boolean(pushingTaskId) || isSegmenting}
+                            onClick={() => {
+                              if (isTaskUploadedToHF) {
+                                window.open(taskHfUrl, "_blank");
+                              } else if (completedSeg) {
+                                handlePushToHF(task, completedSeg);
+                              }
+                            }}
+                            title={
+                              isTaskUploadedToHF
+                                ? `View ${task.name} on Hugging Face (already uploaded)`
+                                : `Push ${task.name} segmentation to Hugging Face dataset`
+                            }
+                            aria-label={
+                              isTaskUploadedToHF
+                                ? `View ${task.name} on Hugging Face`
+                                : `Push ${task.name} segmentation to Hugging Face`
+                            }
+                          >
+                            {pushingTaskId === task.id ? (
+                              <span className="loading-spinner small" />
+                            ) : isTaskUploadedToHF ? (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                <polyline points="15 3 21 3 21 9" />
+                                <line x1="10" y1="14" x2="21" y2="3" />
+                              </svg>
+                            ) : (
+                              <span style={{ fontSize: "0.85rem" }} role="img" aria-label="Hugging Face">🤗</span>
+                            )}
+                          </button>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <button
@@ -432,31 +458,53 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                           </svg>
                         </button>
                       )}
-                      <button
-                        className={`totalseg-hf-push-btn ${pushedTasks[task.id] ? "pushed" : ""}`}
-                        disabled={Boolean(pushingTaskId) || isSegmenting}
-                        onClick={() => {
-                          if (pushedTasks[task.id]) {
-                            window.open(pushedTasks[task.id], "_blank");
-                          } else if (completedSeg) {
-                            handlePushToHF(task, completedSeg);
-                          }
-                        }}
-                        title={
-                          pushedTasks[task.id]
-                            ? "Pushed to Hugging Face! Click to open dataset repository"
-                            : `Push ${task.name} segmentation to Hugging Face dataset`
-                        }
-                        aria-label={`Push ${task.name} segmentation to Hugging Face`}
-                      >
-                        {pushingTaskId === task.id ? (
-                          <span className="loading-spinner small" />
-                        ) : pushedTasks[task.id] ? (
-                          <span style={{ fontSize: "0.72rem", fontWeight: 700 }}>✓ HF</span>
-                        ) : (
-                          <span style={{ fontSize: "0.85rem" }} role="img" aria-label="Hugging Face">🤗</span>
-                        )}
-                      </button>
+                      {(() => {
+                        const isTaskUploadedToHF = Boolean(
+                          pushedTasks[task.id] ||
+                          hfFiles.some((f) => {
+                            const taskClean = task.id.replace(/_/g, "").toLowerCase();
+                            const fnClean = f.filename.replace(/_/g, "").toLowerCase();
+                            return fnClean.includes(taskClean) || taskClean.includes(fnClean.replace(".dcm", ""));
+                          })
+                        );
+                        const taskHfUrl = pushedTasks[task.id] || hfFiles[0]?.url || "https://huggingface.co/datasets/vishnusureshperumbavoor/dicom_public_dataset";
+
+                        return (
+                          <button
+                            className={`totalseg-hf-push-btn ${isTaskUploadedToHF ? "pushed" : ""}`}
+                            disabled={Boolean(pushingTaskId) || isSegmenting}
+                            onClick={() => {
+                              if (isTaskUploadedToHF) {
+                                window.open(taskHfUrl, "_blank");
+                              } else if (completedSeg) {
+                                handlePushToHF(task, completedSeg);
+                              }
+                            }}
+                            title={
+                              isTaskUploadedToHF
+                                ? `View ${task.name} on Hugging Face (already uploaded)`
+                                : `Push ${task.name} segmentation to Hugging Face dataset`
+                            }
+                            aria-label={
+                              isTaskUploadedToHF
+                                ? `View ${task.name} on Hugging Face`
+                                : `Push ${task.name} segmentation to Hugging Face`
+                            }
+                          >
+                            {pushingTaskId === task.id ? (
+                              <span className="loading-spinner small" />
+                            ) : isTaskUploadedToHF ? (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                <polyline points="15 3 21 3 21 9" />
+                                <line x1="10" y1="14" x2="21" y2="3" />
+                              </svg>
+                            ) : (
+                              <span style={{ fontSize: "0.85rem" }} role="img" aria-label="Hugging Face">🤗</span>
+                            )}
+                          </button>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <button

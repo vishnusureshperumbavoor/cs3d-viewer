@@ -37,6 +37,11 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 }) => {
   const [pushingUid, setPushingUid] = useState<string | null>(null);
   const [pushedUids, setPushedUids] = useState<Record<string, string>>({});
+  const [hfFiles, setHfFiles] = useState<Array<{ filename: string; url: string }>>([]);
+
+  React.useEffect(() => {
+    totalsegmentatorService.getHFSegmentations().then(setHfFiles);
+  }, [seriesList.length]);
 
   const handlePushToHF = async (segSeriesUid: string) => {
     if (pushingUid) return;
@@ -44,6 +49,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     try {
       const res = await totalsegmentatorService.pushSegToHuggingFace(segSeriesUid);
       setPushedUids((prev) => ({ ...prev, [segSeriesUid]: res.url }));
+      const updated = await totalsegmentatorService.getHFSegmentations();
+      setHfFiles(updated);
     } catch (err: any) {
       console.error("Push to HF failed:", err);
       alert(err.message || "Failed to push segmentation to Hugging Face.");
@@ -181,6 +188,24 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   parsedSeg?.contentDescription?.toLowerCase().includes("totalsegmentator")
                 );
 
+                const isUploadedToHF = Boolean(
+                  pushedUids[segSeries.seriesUid] ||
+                  hfFiles.some((f) => {
+                    const fnNorm = (f.filename || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("totalsegmentator", "").replace("dcm", "");
+                    const titleNorm = (segTitle || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("totalsegmentator", "");
+                    const labelNorm = (parsedSeg?.contentLabel || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("ts", "");
+
+                    if (!fnNorm || (!titleNorm && !labelNorm)) return false;
+
+                    return (
+                      (titleNorm && (fnNorm.includes(titleNorm) || titleNorm.includes(fnNorm))) ||
+                      (labelNorm && (fnNorm.includes(labelNorm) || labelNorm.includes(fnNorm))) ||
+                      (fnNorm.includes("livervessels") && (titleNorm.includes("livervessels") || titleNorm.includes("hepaticvessels")))
+                    );
+                  })
+                );
+                const hfUrl = pushedUids[segSeries.seriesUid] || hfFiles[0]?.url || "https://huggingface.co/datasets/vishnusureshperumbavoor/dicom_public_dataset";
+
                 return (
                   <div
                     key={segSeries.seriesUid}
@@ -207,27 +232,35 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                         <div className="seg-card-action-btns">
                           {isTotalSeg && (
                             <button
-                              className={`seg-series-hf-btn ${pushedUids[segSeries.seriesUid] ? "pushed" : ""}`}
+                              className={`seg-series-hf-btn ${isUploadedToHF ? "pushed" : ""}`}
                               disabled={pushingUid === segSeries.seriesUid}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (pushedUids[segSeries.seriesUid]) {
-                                  window.open(pushedUids[segSeries.seriesUid], "_blank");
+                                if (isUploadedToHF) {
+                                  window.open(hfUrl, "_blank");
                                 } else {
                                   handlePushToHF(segSeries.seriesUid);
                                 }
                               }}
                               title={
-                                pushedUids[segSeries.seriesUid]
-                                  ? "Pushed to Hugging Face! Click to open dataset repository"
+                                isUploadedToHF
+                                  ? `View ${segTitle} on Hugging Face (already uploaded)`
                                   : `Push ${segTitle} to Hugging Face dataset`
                               }
-                              aria-label={`Push ${segTitle} to Hugging Face`}
+                              aria-label={
+                                isUploadedToHF
+                                  ? `View ${segTitle} on Hugging Face`
+                                  : `Push ${segTitle} to Hugging Face`
+                              }
                             >
                               {pushingUid === segSeries.seriesUid ? (
                                 <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
-                              ) : pushedUids[segSeries.seriesUid] ? (
-                                <span style={{ fontSize: "0.68rem", fontWeight: 700 }}>✓</span>
+                              ) : isUploadedToHF ? (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                  <polyline points="15 3 21 3 21 9" />
+                                  <line x1="10" y1="14" x2="21" y2="3" />
+                                </svg>
                               ) : (
                                 <span style={{ fontSize: "0.85rem" }}>🤗</span>
                               )}

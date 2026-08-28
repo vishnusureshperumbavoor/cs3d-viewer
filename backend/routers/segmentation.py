@@ -80,3 +80,10 @@ async def delete_segmentation_series(series_uid: str):
         raise HTTPException(status_code=404, detail=f"Series with UID {series_uid} could not be deleted from Orthanc.")
     return {"status": "success", "deletedSeriesUid": series_uid}
 
+@router.get("/hf-files")
+async def get_hf_segmentations(study_folder: str = None):
+    """Lists all TotalSegmentator segmentation files already uploaded to Hugging Face dataset."""
+    from services.dataset_service import dataset_service
+    files = dataset_service.list_hf_segmentations(study_folder=study_folder)
+    return {"files": files}
+

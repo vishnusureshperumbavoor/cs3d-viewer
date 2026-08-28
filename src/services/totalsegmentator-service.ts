@@ -101,6 +101,24 @@ export const totalsegmentatorService = {
     },
 
     /**
+     * Retrieves the list of segmentation files currently uploaded to Hugging Face.
+     */
+    getHFSegmentations: async (studyFolder?: string): Promise<Array<{ filename: string; path: string; url: string }>> => {
+        try {
+            const url = studyFolder
+                ? `http://localhost:8000/api/segment/hf-files?study_folder=${encodeURIComponent(studyFolder)}`
+                : "http://localhost:8000/api/segment/hf-files";
+            const response = await fetch(url);
+            if (!response.ok) return [];
+            const data = await response.json();
+            return data.files || [];
+        } catch (e) {
+            console.warn("Failed to fetch Hugging Face segmentations:", e);
+            return [];
+        }
+    },
+
+    /**
      * Reads, base64 encodes, and parses a local DICOM SEG file uploaded by the user.
      */
     parseFile: async (file: File): Promise<SegmentationResult> => {

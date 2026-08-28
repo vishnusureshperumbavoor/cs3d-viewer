@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import zipfile
 import requests
-from typing import Generator, Dict, Any, Optional
+from typing import Generator, Dict, Any, Optional, List
 from huggingface_hub import snapshot_download
 from core.config import HF_REPO_ID, HF_STUDY_FOLDER
 from services.orthanc_client import orthanc_client
@@ -172,5 +172,30 @@ class DatasetService:
             "repoId": HF_REPO_ID,
             "url": hf_url,
         }
+
+    def list_hf_segmentations(self, study_folder: Optional[str] = None) -> List[Dict[str, str]]:
+        """Lists all segmentation files uploaded to the Hugging Face dataset repository for a study."""
+        hf_token = os.getenv("HF_TOKEN")
+        target_folder = study_folder or HF_STUDY_FOLDER
+        prefix = f"{target_folder}/seg_totalsegmentator/"
+        try:
+            from huggingface_hub import HfApi
+            token_arg = hf_token if hf_token and "your_huggingface" not in hf_token else None
+            api = HfApi(token=token_arg)
+            all_files = api.list_repo_files(repo_id=HF_REPO_ID, repo_type="dataset")
+            results = []
+            for f in all_files:
+                if f.startswith(prefix) and f.endswith(".dcm"):
+                    filename = f.split("/")[-1]
+                    file_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/tree/main/{target_folder}/seg_totalsegmentator"
+                    results.append({
+                        "filename": filename,
+                        "path": f,
+                        "url": file_url,
+                    })
+            return results
+        except Exception as e:
+            print(f"[DatasetService] Error listing HF segmentation files: {e}")
+            return []
 
 dataset_service = DatasetService()
