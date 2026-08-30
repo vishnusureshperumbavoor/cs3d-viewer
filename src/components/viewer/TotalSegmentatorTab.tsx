@@ -171,7 +171,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   }, [recommendedTasks, filterNoLicenseOnly, filterCompletedOnly, loadedSegs]);
 
   const filteredTasks = useMemo(() => {
-    let list = TOTALSEGMENTATOR_TASKS;
+    let list = TOTALSEGMENTATOR_TASKS.filter((t) => !recommendedIds.has(t.id));
 
     if (selectedCategory === "academic") {
       list = list.filter((t) => t.requiresLicense);
@@ -188,7 +188,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
     }
 
     return list;
-  }, [selectedCategory, filterNoLicenseOnly, filterCompletedOnly, loadedSegs]);
+  }, [recommendedIds, selectedCategory, filterNoLicenseOnly, filterCompletedOnly, loadedSegs]);
 
   const handleRunTask = (task: TotalSegTask) => {
     if (!selectedSeriesUid || isSegmenting) return;
@@ -481,7 +481,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
         >
           <div className="totalseg-section-title-group">
             <span className="seg-section-title" style={{ padding: 0 }}>
-              Specialized AI Models
+              Other Models
             </span>
             <span className="totalseg-count-badge">
               {filteredTasks.length}
