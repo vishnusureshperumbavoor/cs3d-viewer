@@ -64,6 +64,20 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   const [pushedTasks, setPushedTasks] = useState<Record<string, string>>({});
   const [hfFiles, setHfFiles] = useState<Array<{ filename: string; url: string }>>([]);
   const [isSpecializedOpen, setIsSpecializedOpen] = useState<boolean>(false);
+  const [expandedStructuresTaskIds, setExpandedStructuresTaskIds] = useState<Set<string>>(new Set());
+
+  const toggleExpandedStructures = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedStructuresTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
   const [localLicenseInfo, setLocalLicenseInfo] = useState<{ hasLicense: boolean; licenseMasked?: string | null }>({
     hasLicense: false,
     licenseMasked: null,
@@ -364,15 +378,34 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                             )
                           )}
 
-                          {task.structures.slice(0, 3).map((s) => (
+                          {(expandedStructuresTaskIds.has(task.id)
+                            ? task.structures
+                            : task.structures.slice(0, 3)
+                          ).map((s) => (
                             <span key={s} className="totalseg-structure-tag">
                               {s}
                             </span>
                           ))}
                           {task.structures.length > 3 && (
-                            <span className="totalseg-structure-tag more">
-                              +{task.structures.length - 3} more
-                            </span>
+                            <button
+                              type="button"
+                              className={`totalseg-structure-tag more ${expandedStructuresTaskIds.has(task.id) ? "active" : ""}`}
+                              onClick={(e) => toggleExpandedStructures(task.id, e)}
+                              title={
+                                expandedStructuresTaskIds.has(task.id)
+                                  ? "Click to show fewer structures"
+                                  : `Click to view all ${task.structures.length} structures: ${task.structures.join(", ")}`
+                              }
+                              aria-label={
+                                expandedStructuresTaskIds.has(task.id)
+                                  ? "Show fewer structures"
+                                  : `Show ${task.structures.length - 3} more structures`
+                              }
+                            >
+                              {expandedStructuresTaskIds.has(task.id)
+                                ? "show less"
+                                : `+${task.structures.length - 3} more`}
+                            </button>
                           )}
                         </div>
                       </div>
@@ -660,15 +693,34 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                               <span className="totalseg-task-tag">--task {task.id}</span>
                             )}
 
-                            {task.structures.slice(0, 3).map((s) => (
+                            {(expandedStructuresTaskIds.has(task.id)
+                              ? task.structures
+                              : task.structures.slice(0, 3)
+                            ).map((s) => (
                               <span key={s} className="totalseg-structure-tag">
                                 {s}
                               </span>
                             ))}
                             {task.structures.length > 3 && (
-                              <span className="totalseg-structure-tag more">
-                                +{task.structures.length - 3} more
-                              </span>
+                              <button
+                                type="button"
+                                className={`totalseg-structure-tag more ${expandedStructuresTaskIds.has(task.id) ? "active" : ""}`}
+                                onClick={(e) => toggleExpandedStructures(task.id, e)}
+                                title={
+                                  expandedStructuresTaskIds.has(task.id)
+                                    ? "Click to show fewer structures"
+                                    : `Click to view all ${task.structures.length} structures: ${task.structures.join(", ")}`
+                                }
+                                aria-label={
+                                  expandedStructuresTaskIds.has(task.id)
+                                    ? "Show fewer structures"
+                                    : `Show ${task.structures.length - 3} more structures`
+                                }
+                              >
+                                {expandedStructuresTaskIds.has(task.id)
+                                  ? "show less"
+                                  : `+${task.structures.length - 3} more`}
+                              </button>
                             )}
                           </div>
                         </div>

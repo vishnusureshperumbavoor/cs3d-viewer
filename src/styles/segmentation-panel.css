@@ -924,6 +924,26 @@
 
 .totalseg-structure-tag.more {
   color: #94a3b8;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  font-family: inherit;
+  font-weight: 500;
+  line-height: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.totalseg-structure-tag.more:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.totalseg-structure-tag.more.active {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
 }
 
 .totalseg-task-footer {
