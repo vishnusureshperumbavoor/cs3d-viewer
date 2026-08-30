@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   TOTALSEGMENTATOR_TASKS,
   getRecommendedTasks,
@@ -27,7 +27,7 @@ export function useTotalSegFilters({
   const [filterCompletedOnly, setFilterCompletedOnly] = useState<boolean>(false);
   const [filterNoLicenseOnly, setFilterNoLicenseOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isSpecializedOpen, setIsSpecializedOpen] = useState<boolean>(false);
+  const [activeMode, setActiveMode] = useState<"recommended" | "explore">("recommended");
   const [expandedStructuresTaskIds, setExpandedStructuresTaskIds] = useState<Set<string>>(new Set());
 
   const cleanSearchQuery = searchQuery.trim().toLowerCase();
@@ -48,15 +48,13 @@ export function useTotalSegFilters({
   const toggleFilterCompleted = () => {
     const next = !filterCompletedOnly;
     setFilterCompletedOnly(next);
-    if (next) setIsSpecializedOpen(true);
   };
 
   const toggleFilterNoLicense = () => {
     const next = !filterNoLicenseOnly;
     setFilterNoLicenseOnly(next);
-    if (next) {
-      setIsSpecializedOpen(true);
-      if (selectedCategory === "academic") setSelectedCategory("all");
+    if (next && selectedCategory === "academic") {
+      setSelectedCategory("all");
     }
   };
 
@@ -87,13 +85,6 @@ export function useTotalSegFilters({
     return new Set(recommendedTasks.map((t) => t.id));
   }, [recommendedTasks]);
 
-  // Auto-expand specialized section if user searches
-  useEffect(() => {
-    if (cleanSearchQuery) {
-      setIsSpecializedOpen(true);
-    }
-  }, [cleanSearchQuery]);
-
   const filteredRecommendedTasks: TotalSegTask[] = useMemo(() => {
     let list = recommendedTasks;
     if (cleanSearchQuery) {
@@ -108,8 +99,9 @@ export function useTotalSegFilters({
     return list;
   }, [recommendedTasks, cleanSearchQuery, filterNoLicenseOnly, filterCompletedOnly, loadedSegs, segDataMap]);
 
+  // In explore mode, display ALL models (do not restrict or exclude recommended tasks)
   const filteredTasks: TotalSegTask[] = useMemo(() => {
-    let list = TOTALSEGMENTATOR_TASKS.filter((t) => !recommendedIds.has(t.id));
+    let list = [...TOTALSEGMENTATOR_TASKS];
 
     if (cleanSearchQuery) {
       list = list.filter((t) => matchesTotalSegSearch(t, cleanSearchQuery));
@@ -130,7 +122,7 @@ export function useTotalSegFilters({
     }
 
     return list;
-  }, [recommendedIds, cleanSearchQuery, selectedCategory, filterNoLicenseOnly, filterCompletedOnly, loadedSegs, segDataMap]);
+  }, [cleanSearchQuery, selectedCategory, filterNoLicenseOnly, filterCompletedOnly, loadedSegs, segDataMap]);
 
   return {
     selectedCategory,
@@ -142,8 +134,8 @@ export function useTotalSegFilters({
     searchQuery,
     setSearchQuery,
     cleanSearchQuery,
-    isSpecializedOpen,
-    setIsSpecializedOpen,
+    activeMode,
+    setActiveMode,
     expandedStructuresTaskIds,
     toggleExpandedStructures,
     resetFilters,

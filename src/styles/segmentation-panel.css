@@ -562,6 +562,78 @@
   color: #ffffff;
 }
 
+/* ── Navigation Tabs Bar (Recommended vs Explore) ── */
+.totalseg-tabs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px 8px 10px;
+  box-sizing: border-box;
+}
+
+.totalseg-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  padding: 2px;
+}
+
+.totalseg-mode-tab {
+  width: 30px;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.totalseg-mode-tab:hover:not(.active) {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.totalseg-mode-tab.active.recommended {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.38);
+  color: #fbbf24;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.2);
+}
+
+.totalseg-mode-tab.active.explore {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.38);
+  color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
+.totalseg-tabs-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.totalseg-tabs-count {
+  font-size: 0.65rem;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.totalseg-explore-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .totalseg-scan-context-header {
   display: flex;
   align-items: center;
@@ -772,7 +844,13 @@
   color: #38bdf8;
 }
 
-/* ── Category Pills ── */
+/* ── Category Pills (Sticky in Explore Mode) ── */
+.totalseg-category-pills-wrap {
+  padding: 0 10px 8px 10px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
 .totalseg-category-pills {
   display: flex;
   gap: 4px;

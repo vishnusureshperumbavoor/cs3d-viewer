@@ -82,12 +82,11 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
     searchQuery,
     setSearchQuery,
     cleanSearchQuery,
-    isSpecializedOpen,
-    setIsSpecializedOpen,
+    activeMode,
+    setActiveMode,
     expandedStructuresTaskIds,
     toggleExpandedStructures,
     resetFilters,
-    recommendedTasks,
     filteredRecommendedTasks,
     filteredTasks,
   } = useTotalSegFilters({
@@ -161,7 +160,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
 
   return (
     <div className="totalseg-tab-view">
-      {/* Sticky Header: Scan Context & Search Input */}
+      {/* Sticky Header: Scan Context, Search Input & Mode Tabs */}
       <TotalSegHeader
         modality={modality}
         bodyPart={bodyPart}
@@ -172,42 +171,140 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
         onToggleFilterNoLicense={toggleFilterNoLicense}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-      />
-
-      {/* Recommended Tasks Section */}
-      {recommendedTasks.length > 0 && (
-        <div className="totalseg-section">
-          <div className="totalseg-section-header">
-            <div className="totalseg-section-title-group">
-              <span className="totalseg-section-badge">💡 Recommended</span>
-              <span className="totalseg-count-badge">
-                {filteredRecommendedTasks.length}
-              </span>
-              <span className="totalseg-section-subtitle">
-                Matched for {modality} {bodyPart}
-              </span>
+        activeMode={activeMode}
+        onModeChange={setActiveMode}
+        recommendedCount={filteredRecommendedTasks.length}
+        exploreCount={filteredTasks.length}
+      >
+        {/* Sticky Body Parts / Category Pills in Explore Mode */}
+        {activeMode === "explore" && (
+          <div className="totalseg-category-pills-wrap">
+            <div className="totalseg-category-pills">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  className={`totalseg-category-pill ${selectedCategory === cat.id ? "active" : ""}`}
+                  onClick={() => setSelectedCategory(cat.id)}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
           </div>
+        )}
+      </TotalSegHeader>
 
+      {/* ── Recommended Tab View ── */}
+      {activeMode === "recommended" && (
+        <div className="totalseg-task-list">
+          {filteredRecommendedTasks.length === 0 ? (
+            <div className="totalseg-empty-filter-state" style={{ padding: "14px 10px" }}>
+              <span style={{ fontSize: "1.1rem" }}>🔍</span>
+              <span className="totalseg-empty-filter-title" style={{ fontSize: "0.75rem" }}>
+                {cleanSearchQuery
+                  ? `No recommended models match "${searchQuery}"`
+                  : "No matching recommended models"}
+              </span>
+              <span className="totalseg-empty-filter-desc" style={{ fontSize: "0.68rem" }}>
+                {cleanSearchQuery
+                  ? "Switch to the Explore tab to search all available models."
+                  : filterCompletedOnly
+                    ? "No completed recommended segmentations in this study."
+                    : "No models match the active filter."}
+              </span>
+              {cleanSearchQuery && (
+                <button
+                  type="button"
+                  className="totalseg-clear-filters-btn"
+                  onClick={() => setActiveMode("explore")}
+                >
+                  Switch to Explore Tab
+                </button>
+              )}
+            </div>
+          ) : (
+            filteredRecommendedTasks.map((task: TotalSegTask) => {
+              const completedSeg = getCompletedSeg(loadedSegs, segDataMap, task.id);
+              const isSegActive = Boolean(
+                completedSeg &&
+                  (selectedCardTaskId === task.id ||
+                    (activeSegSeriesUid && completedSeg.seriesUid === activeSegSeriesUid))
+              );
+
+              return (
+                <TotalSegTaskCard
+                  key={task.id}
+                  task={task}
+                  isRecommended
+                  completedSeg={completedSeg}
+                  isDownloaded={installedTasks.includes(task.id)}
+                  isSegActive={isSegActive}
+                  isThisTaskRunning={isSegmenting && runningTaskId === task.id}
+                  isSegmenting={isSegmenting}
+                  hasLicense={licenseInfo.hasLicense}
+                  cleanSearchQuery={cleanSearchQuery}
+                  isExpandedStructures={expandedStructuresTaskIds.has(task.id)}
+                  onToggleExpandStructures={toggleExpandedStructures}
+                  onSelectCard={() => {
+                    if (completedSeg && selectedSeriesUid) {
+                      setSelectedCardTaskId(task.id);
+                      onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
+                    }
+                  }}
+                  onRunTask={handleRunTask}
+                  onDeleteSegSeries={onDeleteSegSeries}
+                  onOpenLicenseModal={onOpenLicenseModal}
+                  isPushingHF={pushingTaskId === task.id}
+                  isPushedHF={isTaskUploadedToHF(task)}
+                  onPushToHF={handlePushToHF}
+                />
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* ── Explore Tab View (All Models Available for Selection) ── */}
+      {activeMode === "explore" && (
+        <div className="totalseg-explore-container">
+          {/* Contextual Academic License Card */}
+          {selectedCategory === "academic" && (
+            <TotalSegAcademicBanner
+              hasLicense={licenseInfo.hasLicense}
+              licenseMasked={licenseInfo.licenseMasked}
+              onOpenLicenseModal={() => onOpenLicenseModal?.()}
+            />
+          )}
+
+          {/* Task Cards */}
           <div className="totalseg-task-list">
-            {filteredRecommendedTasks.length === 0 ? (
-              <div className="totalseg-empty-filter-state" style={{ padding: "14px 10px" }}>
-                <span style={{ fontSize: "1.1rem" }}>🔍</span>
-                <span className="totalseg-empty-filter-title" style={{ fontSize: "0.75rem" }}>
+            {filteredTasks.length === 0 ? (
+              <div className="totalseg-empty-filter-state">
+                <span style={{ fontSize: "1.4rem" }}>🔍</span>
+                <span className="totalseg-empty-filter-title">
                   {cleanSearchQuery
-                    ? `No recommended models match "${searchQuery}"`
-                    : "No matching recommended models"}
+                    ? `No models found matching "${searchQuery}"`
+                    : "No matching models found"}
                 </span>
-                <span className="totalseg-empty-filter-desc" style={{ fontSize: "0.68rem" }}>
+                <span className="totalseg-empty-filter-desc">
                   {cleanSearchQuery
-                    ? "Check the Other Models catalog below for matches."
-                    : filterCompletedOnly
-                      ? "No completed recommended segmentations in this study."
-                      : "No models match the active filter."}
+                    ? "Try a different anatomical keyword or check your spelling."
+                    : filterCompletedOnly && filterNoLicenseOnly
+                      ? "No completed models found without license requirement in this study."
+                      : filterCompletedOnly
+                        ? "No segmentations have been completed yet for this selection."
+                        : "No models match the selected category and filters."}
                 </span>
+                <button
+                  type="button"
+                  className="totalseg-clear-filters-btn"
+                  onClick={resetFilters}
+                >
+                  Reset All Filters
+                </button>
               </div>
             ) : (
-              filteredRecommendedTasks.map((task: TotalSegTask) => {
+              filteredTasks.map((task: TotalSegTask) => {
                 const completedSeg = getCompletedSeg(loadedSegs, segDataMap, task.id);
                 const isSegActive = Boolean(
                   completedSeg &&
@@ -219,7 +316,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                   <TotalSegTaskCard
                     key={task.id}
                     task={task}
-                    isRecommended
                     completedSeg={completedSeg}
                     isDownloaded={installedTasks.includes(task.id)}
                     isSegActive={isSegActive}
@@ -248,127 +344,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
           </div>
         </div>
       )}
-
-      {/* Other Models Catalog */}
-      <div className={`totalseg-section ${isSpecializedOpen ? "expanded" : "collapsed"}`}>
-        <button
-          type="button"
-          className="totalseg-collapsible-header"
-          onClick={() => setIsSpecializedOpen((prev) => !prev)}
-          aria-expanded={isSpecializedOpen}
-        >
-          <div className="totalseg-section-title-group">
-            <span className="totalseg-section-badge other-models">🔬 Other Models</span>
-            <span className="totalseg-count-badge">{filteredTasks.length}</span>
-          </div>
-          <svg
-            className={`totalseg-collapse-chevron ${isSpecializedOpen ? "open" : ""}`}
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-
-        {isSpecializedOpen && (
-          <>
-            {/* Category Pills */}
-            <div className="totalseg-category-pills" style={{ marginTop: "4px" }}>
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  className={`totalseg-category-pill ${selectedCategory === cat.id ? "active" : ""}`}
-                  onClick={() => setSelectedCategory(cat.id)}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Contextual Academic License Card */}
-            {selectedCategory === "academic" && (
-              <TotalSegAcademicBanner
-                hasLicense={licenseInfo.hasLicense}
-                licenseMasked={licenseInfo.licenseMasked}
-                onOpenLicenseModal={() => onOpenLicenseModal?.()}
-              />
-            )}
-
-            {/* Catalog Task Cards */}
-            <div className="totalseg-task-list">
-              {filteredTasks.length === 0 ? (
-                <div className="totalseg-empty-filter-state">
-                  <span style={{ fontSize: "1.4rem" }}>🔍</span>
-                  <span className="totalseg-empty-filter-title">
-                    {cleanSearchQuery
-                      ? `No models found matching "${searchQuery}"`
-                      : "No matching models found"}
-                  </span>
-                  <span className="totalseg-empty-filter-desc">
-                    {cleanSearchQuery
-                      ? "Try a different anatomical keyword or check your spelling."
-                      : filterCompletedOnly && filterNoLicenseOnly
-                        ? "No completed models found without license requirement in this study."
-                        : filterCompletedOnly
-                          ? "No segmentations have been completed yet for this selection."
-                          : "No models match the selected category and filters."}
-                  </span>
-                  <button
-                    type="button"
-                    className="totalseg-clear-filters-btn"
-                    onClick={resetFilters}
-                  >
-                    Reset All Filters
-                  </button>
-                </div>
-              ) : (
-                filteredTasks.map((task: TotalSegTask) => {
-                  const completedSeg = getCompletedSeg(loadedSegs, segDataMap, task.id);
-                  const isSegActive = Boolean(
-                    completedSeg &&
-                      (selectedCardTaskId === task.id ||
-                        (activeSegSeriesUid && completedSeg.seriesUid === activeSegSeriesUid))
-                  );
-
-                  return (
-                    <TotalSegTaskCard
-                      key={task.id}
-                      task={task}
-                      completedSeg={completedSeg}
-                      isDownloaded={installedTasks.includes(task.id)}
-                      isSegActive={isSegActive}
-                      isThisTaskRunning={isSegmenting && runningTaskId === task.id}
-                      isSegmenting={isSegmenting}
-                      hasLicense={licenseInfo.hasLicense}
-                      cleanSearchQuery={cleanSearchQuery}
-                      isExpandedStructures={expandedStructuresTaskIds.has(task.id)}
-                      onToggleExpandStructures={toggleExpandedStructures}
-                      onSelectCard={() => {
-                        if (completedSeg && selectedSeriesUid) {
-                          setSelectedCardTaskId(task.id);
-                          onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
-                        }
-                      }}
-                      onRunTask={handleRunTask}
-                      onDeleteSegSeries={onDeleteSegSeries}
-                      onOpenLicenseModal={onOpenLicenseModal}
-                      isPushingHF={pushingTaskId === task.id}
-                      isPushedHF={isTaskUploadedToHF(task)}
-                      onPushToHF={handlePushToHF}
-                    />
-                  );
-                })
-              )}
-            </div>
-          </>
-        )}
-      </div>
     </div>
   );
 };

@@ -10,6 +10,11 @@ export interface TotalSegHeaderProps {
   onToggleFilterNoLicense: () => void;
   searchQuery: string;
   onSearchChange: (val: string) => void;
+  activeMode: "recommended" | "explore";
+  onModeChange: (mode: "recommended" | "explore") => void;
+  recommendedCount?: number;
+  exploreCount?: number;
+  children?: React.ReactNode;
 }
 
 export const TotalSegHeader: React.FC<TotalSegHeaderProps> = ({
@@ -22,6 +27,11 @@ export const TotalSegHeader: React.FC<TotalSegHeaderProps> = ({
   onToggleFilterNoLicense,
   searchQuery,
   onSearchChange,
+  activeMode,
+  onModeChange,
+  recommendedCount = 0,
+  exploreCount = 0,
+  children,
 }) => {
   return (
     <div className="totalseg-sticky-header">
@@ -104,6 +114,70 @@ export const TotalSegHeader: React.FC<TotalSegHeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Navigation Tabs (Single Row - Only Icons & Tooltip) */}
+      <div className="totalseg-tabs-bar">
+        <div className="totalseg-mode-tabs">
+          <button
+            type="button"
+            className={`totalseg-mode-tab ${activeMode === "recommended" ? "active recommended" : ""}`}
+            onClick={() => onModeChange("recommended")}
+            title="Recommended"
+            aria-label="Recommended"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 18h6" />
+              <path d="M10 22h4" />
+              <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            className={`totalseg-mode-tab ${activeMode === "explore" ? "active explore" : ""}`}
+            onClick={() => onModeChange("explore")}
+            title="Explore"
+            aria-label="Explore"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <polygon
+                points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"
+                fill="currentColor"
+                fillOpacity="0.25"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="totalseg-tabs-bar-meta">
+          <span className="totalseg-tabs-count">
+            {activeMode === "recommended"
+              ? `${recommendedCount} recommended`
+              : `${exploreCount} models`}
+          </span>
+        </div>
+      </div>
+
+      {children}
     </div>
   );
 };
