@@ -1,12 +1,24 @@
+
 export const renderTotalSegIcon = (id: string) => {
   switch (id) {
     case "total":
+    case "total_v3":
     case "total_mr":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="5" r="3" />
           <path d="M6 21v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3" />
           <path d="M9 13a3 3 0 0 0 6 0" />
+        </svg>
+      );
+
+    case "body":
+    case "body_mr":
+    case "trunk_cavities":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2a5 5 0 0 0-5 5v3a7 7 0 0 0 14 0V7a5 5 0 0 0-5-5Z" />
+          <path d="M7 10v9a5 5 0 0 0 10 0v-9" />
         </svg>
       );
 
@@ -21,7 +33,23 @@ export const renderTotalSegIcon = (id: string) => {
         </svg>
       );
 
+    case "liver_segments":
+    case "liver_segments_mr":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 3v18" />
+          <path d="M3 12h18" />
+          <circle cx="8" cy="8" r="1.5" />
+          <circle cx="16" cy="8" r="1.5" />
+          <circle cx="8" cy="16" r="1.5" />
+          <circle cx="16" cy="16" r="1.5" />
+        </svg>
+      );
+
     case "tissue_types":
+    case "tissue_types_mr":
+    case "tissue_4_types":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect width="18" height="18" x="3" y="3" rx="3" />
@@ -32,6 +60,9 @@ export const renderTotalSegIcon = (id: string) => {
       );
 
     case "vertebrae_body":
+    case "vertebrae_pp":
+    case "vertebrae_pp_refined":
+    case "vertebrae_mr":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect width="12" height="4" x="6" y="3" rx="1.5" />
@@ -43,6 +74,7 @@ export const renderTotalSegIcon = (id: string) => {
       );
 
     case "appendicular_bones":
+    case "appendicular_bones_mr":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 5a3 3 0 0 0-3 3 3 3 0 0 0 .1 1L9 15.1A3 3 0 1 0 5 19a3 3 0 0 0 3-3 3 3 0 0 0-.1-1L14 8.9A3 3 0 1 0 18 5Z" />
@@ -50,8 +82,21 @@ export const renderTotalSegIcon = (id: string) => {
         </svg>
       );
 
+    case "hip_implant":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="7" r="4" />
+          <path d="M12 11v11" />
+          <path d="m8 15 8 0" />
+          <path d="m9 19 6 0" />
+        </svg>
+      );
+
     case "thigh_shoulder_muscles":
+    case "thigh_shoulder_muscles_mr":
     case "headneck_muscles":
+    case "head_muscles":
+    case "abdominal_muscles":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 18c0-3 2-6 6-6s6 3 6 6" />
@@ -61,6 +106,7 @@ export const renderTotalSegIcon = (id: string) => {
       );
 
     case "heartchambers_highres":
+    case "ventricle_parts":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
@@ -71,6 +117,11 @@ export const renderTotalSegIcon = (id: string) => {
 
     case "coronary_arteries":
     case "aortic_sinuses":
+    case "aorta_annulus":
+    case "aortic_dissection":
+    case "renal_arteries":
+    case "pulmonary_artery_landmarks":
+    case "headneck_bones_vessels":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 3v6" />
@@ -94,11 +145,37 @@ export const renderTotalSegIcon = (id: string) => {
         </svg>
       );
 
+    case "lung_nodules":
+    case "liver_lesions":
+    case "liver_lesions_mr":
+    case "kidney_cysts":
+    case "brain_aneurysm":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="8" />
+          <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.4" />
+          <path d="M12 2v2" />
+          <path d="M12 20v2" />
+          <path d="M2 12h2" />
+          <path d="M20 12h2" />
+        </svg>
+      );
+
     case "pleural_pericard_effusion":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
           <path d="M8 15a4 4 0 0 0 8 0" strokeDasharray="2 2" />
+        </svg>
+      );
+
+    case "breasts":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="8" cy="12" r="5" />
+          <circle cx="16" cy="12" r="5" />
+          <circle cx="8" cy="12" r="1.5" />
+          <circle cx="16" cy="12" r="1.5" />
         </svg>
       );
 
@@ -120,6 +197,9 @@ export const renderTotalSegIcon = (id: string) => {
       );
 
     case "head_glands_cavities":
+    case "craniofacial_structures":
+    case "face":
+    case "face_mr":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="9" />
@@ -127,6 +207,22 @@ export const renderTotalSegIcon = (id: string) => {
           <circle cx="15" cy="10" r="1.5" />
           <path d="M12 14v2" />
           <path d="M9 18h6" />
+        </svg>
+      );
+
+    case "oculomotor_muscles":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+          <circle cx="12" cy="12" r="1" fill="currentColor" />
+        </svg>
+      );
+
+    case "teeth":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 4h10c1.5 0 3 1.5 3 3.5 0 2.5-1.5 4.5-2 7.5L16 21c-.5 0-1.5-.5-2-2.5-.5-2-1-3-2-3s-1.5 1-2 3c-.5 2-1.5 2.5-2 2.5l-2-6c-.5-3-2-5-2-7.5C4 5.5 5.5 4 7 4Z" />
         </svg>
       );
 

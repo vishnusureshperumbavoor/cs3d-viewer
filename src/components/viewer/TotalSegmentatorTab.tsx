@@ -27,11 +27,13 @@ type TotalSegmentatorTabProps = {
 
 const CATEGORIES = [
   { id: "all", label: "All Tasks" },
+  { id: "whole_body", label: "Whole Body" },
   { id: "abdomen", label: "Abdomen" },
   { id: "cardiac_vascular", label: "Cardiac & Vascular" },
   { id: "chest", label: "Chest & Lungs" },
   { id: "musculoskeletal", label: "Spine & Bones" },
-  { id: "head_neck", label: "Head & Brain" },
+  { id: "head_neck", label: "Head & Dental" },
+  { id: "pathology", label: "Pathology" },
   { id: "mri", label: "MRI" },
 ];
 
