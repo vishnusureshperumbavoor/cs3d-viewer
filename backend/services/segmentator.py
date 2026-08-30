@@ -4,9 +4,15 @@ import shutil
 import tempfile
 import zipfile
 import subprocess
+import signal
 from fastapi import HTTPException
 from services.orthanc_client import orthanc_client
 from services.telegram_notifier import send_telegram_message
+
+# Active process tracking for cancellation support
+active_segmentation_processes = {}
+active_temp_dirs = {}
+cancelled_series = set()
 
 def run_segmentation_pipeline(series_uid: str, task: str = "total", fast: bool = True) -> dict:
     """Download series, run TotalSegmentator with requested task, upload results to Orthanc, and return metadata."""
@@ -122,11 +128,31 @@ def run_segmentation_pipeline(series_uid: str, task: str = "total", fast: bool =
         env["TOTALSEG_HOME_DIR"] = user_totalseg_dir
         env["TOTALSEG_WEIGHTS_PATH"] = os.path.join(user_totalseg_dir, "nnunet", "results")
         env["OMP_NUM_THREADS"] = "4"
+        
+        active_temp_dirs[series_uid] = temp_dir
+        cancelled_series.discard(series_uid)
 
-        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
-        if result.returncode != 0:
-            err_output = (result.stderr or "").strip() or (result.stdout or "").strip() or "Unknown error"
-            print(f"[TotalSegmentator] Failed ({result.returncode}): {err_output}")
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+            preexec_fn=os.setsid,
+        )
+        active_segmentation_processes[series_uid] = process
+
+        stdout, stderr = process.communicate()
+        returncode = process.returncode
+
+        if series_uid in cancelled_series or returncode in (-15, -9, 143, 137):
+            print(f"[TotalSegmentator] Inference was cancelled for series {series_uid}")
+            cancelled_series.discard(series_uid)
+            raise HTTPException(status_code=499, detail="TotalSegmentator inference cancelled by user.")
+
+        if returncode != 0:
+            err_output = (stderr or "").strip() or (stdout or "").strip() or "Unknown error"
+            print(f"[TotalSegmentator] Failed ({returncode}): {err_output}")
             send_telegram_message(
                 f"❌ *TotalSegmentator Failed*\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
@@ -163,15 +189,17 @@ def run_segmentation_pipeline(series_uid: str, task: str = "total", fast: bool =
             upload_result = orthanc_client.upload_instance(f.read())
 
         parent_series_id = upload_result.get("ParentSeries")
+        if not parent_series_id:
+            raise HTTPException(status_code=500, detail="Failed to upload DICOM SEG to Orthanc database.")
+
         instance_id = upload_result.get("ID")
-        seg_series_uid = orthanc_client.get_series_instance_uid(parent_series_id)
+        series_info = orthanc_client.get_series(parent_series_id)
+        seg_series_uid = series_info.get("MainDicomTags", {}).get("SeriesInstanceUID", parent_series_id)
 
-        elapsed = time.time() - start_time
-        mins = int(elapsed // 60)
-        secs = int(elapsed % 60)
-        duration_str = f"{mins}m {secs}s" if mins > 0 else f"{secs}s"
-
-        print(f"[TotalSegmentator] Success! Duration: {duration_str}, Instance ID: {instance_id}, SeriesInstanceUID: {seg_series_uid}")
+        duration = time.time() - start_time
+        mins, secs = divmod(duration, 60)
+        duration_str = f"{int(mins)}m {int(secs)}s" if mins > 0 else f"{secs:.1f}s"
+        print(f"[TotalSegmentator] Pipeline complete in {duration_str}! Uploaded SEG Series UID: {seg_series_uid}")
 
         # Send rich Telegram notification on completion
         structure_info = f"• *Structures*: `{num_structures} segments generated`\n" if num_structures > 0 else ""
@@ -194,5 +222,42 @@ def run_segmentation_pipeline(series_uid: str, task: str = "total", fast: bool =
         }
 
     finally:
+        active_segmentation_processes.pop(series_uid, None)
+        active_temp_dirs.pop(series_uid, None)
+        cancelled_series.discard(series_uid)
         shutil.rmtree(temp_dir, ignore_errors=True)
 
+
+def cancel_segmentation_pipeline(series_uid: str) -> bool:
+    """Cancels a running TotalSegmentator inference process and kills its worker tree."""
+    cancelled_series.add(series_uid)
+    process = active_segmentation_processes.get(series_uid)
+    temp_dir = active_temp_dirs.get(series_uid)
+
+    if not process:
+        print(f"[TotalSegmentator] No running process found to cancel for series {series_uid}")
+        return False
+
+    print(f"[TotalSegmentator] Cancelling inference process PID {process.pid} for series {series_uid}...")
+    try:
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        try:
+            process.wait(timeout=2)
+        except Exception:
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+    except Exception as e:
+        print(f"[TotalSegmentator] Warning killing process {process.pid}: {e}")
+
+    if temp_dir and os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    active_segmentation_processes.pop(series_uid, None)
+    active_temp_dirs.pop(series_uid, None)
+
+    send_telegram_message(
+        f"⏹️ *TotalSegmentator Cancelled*\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"• *Series*: `{series_uid}`\n"
+        f"• Inference cancelled by user."
+    )
+    return True

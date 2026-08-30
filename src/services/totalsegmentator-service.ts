@@ -16,7 +16,8 @@ export const totalsegmentatorService = {
         studyInstanceUid: string,
         seriesInstanceUid: string,
         task: string = "total",
-        fast: boolean = true
+        fast: boolean = true,
+        signal?: AbortSignal
     ): Promise<{ instanceId: string; seriesInstanceUid: string }> => {
         const response = await fetch("http://localhost:8000/api/segment/total", {
             method: "POST",
@@ -29,6 +30,7 @@ export const totalsegmentatorService = {
                 task,
                 fast,
             }),
+            signal,
         });
 
         if (!response.ok) {
@@ -45,6 +47,27 @@ export const totalsegmentatorService = {
             instanceId: data.instanceId,
             seriesInstanceUid: data.seriesInstanceUid,
         };
+    },
+
+    /**
+     * Cancels an active TotalSegmentator process for a series.
+     */
+    cancel: async (seriesInstanceUid: string): Promise<boolean> => {
+        try {
+            const response = await fetch("http://localhost:8000/api/segment/cancel", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ seriesInstanceUid }),
+            });
+            if (!response.ok) return false;
+            const data = await response.json();
+            return Boolean(data.cancelled);
+        } catch (e) {
+            console.warn("Failed to cancel TotalSegmentator process:", e);
+            return false;
+        }
     },
 
     /**

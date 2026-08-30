@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { getRenderingEngine } from "@cornerstonejs/core";
 import {
   ViewerHeader,
@@ -121,6 +121,7 @@ export default function ViewerPage() {
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
   const [pendingLicenseTask, setPendingLicenseTask] = useState<TotalSegTask | null>(null);
+  const totalSegAbortControllerRef = useRef<AbortController | null>(null);
   const [licenseInfo, setLicenseInfo] = useState<{ hasLicense: boolean; licenseMasked?: string | null }>({
     hasLicense: false,
     licenseMasked: null,
@@ -247,6 +248,9 @@ export default function ViewerPage() {
       return;
     }
 
+    const abortController = new AbortController();
+    totalSegAbortControllerRef.current = abortController;
+
     setSegmentingSeriesUid(seriesUid);
     setSegmentingTaskName(task);
     setSegmentingStatus("running");
@@ -256,15 +260,35 @@ export default function ViewerPage() {
         patientDetails?.studyInstanceUid || "",
         seriesUid,
         task,
-        fast
+        fast,
+        abortController.signal
       );
       await refetch();
       setSegmentingStatus("completed");
     } catch (err: any) {
-      console.error("TotalSegmentator run failed:", err);
-      setTotalSegError(err.message || "An unexpected error occurred during TotalSegmentator execution.");
+      if (err.name === "AbortError" || abortController.signal.aborted) {
+        console.log("[ViewerPage] TotalSegmentator run cancelled by user.");
+      } else {
+        console.error("TotalSegmentator run failed:", err);
+        setTotalSegError(err.message || "An unexpected error occurred during TotalSegmentator execution.");
+      }
       setSegmentingSeriesUid(null);
       setSegmentingTaskName(null);
+    } finally {
+      totalSegAbortControllerRef.current = null;
+    }
+  };
+
+  const handleCancelTotalSegmentator = async () => {
+    const seriesUid = segmentingSeriesUid;
+    if (totalSegAbortControllerRef.current) {
+      totalSegAbortControllerRef.current.abort();
+    }
+    setSegmentingSeriesUid(null);
+    setSegmentingTaskName(null);
+    setSegmentingStatus("running");
+    if (seriesUid) {
+      void totalsegmentatorService.cancel(seriesUid);
     }
   };
 
@@ -331,6 +355,7 @@ export default function ViewerPage() {
           segmentingTaskName={segmentingTaskName}
           segmentingStatus={segmentingStatus}
           onDismissSegmentingOverlay={handleDismissSegmentingOverlay}
+          onCancelSegmentation={handleCancelTotalSegmentator}
           totalSegError={totalSegError}
           onDismissTotalSegError={() => setTotalSegError(null)}
           isLicenseModalOpen={isLicenseModalOpen}

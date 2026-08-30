@@ -51,6 +51,17 @@ async def run_totalsegmentator(request: SegmentationRequest):
             raise ex
         raise HTTPException(status_code=500, detail=str(ex))
 
+@router.post("/cancel")
+async def cancel_totalsegmentator(payload: dict):
+    """Cancels a running TotalSegmentator process for a series."""
+    series_uid = payload.get("seriesInstanceUid")
+    if not series_uid:
+        raise HTTPException(status_code=400, detail="Missing required 'seriesInstanceUid'.")
+
+    from services.segmentator import cancel_segmentation_pipeline
+    cancelled = cancel_segmentation_pipeline(series_uid)
+    return {"success": True, "cancelled": cancelled}
+
 @router.post("/push-hf")
 async def push_segmentation_to_huggingface(payload: dict):
     """Pushes a generated DICOM segmentation series from Orthanc to Hugging Face dataset repo."""

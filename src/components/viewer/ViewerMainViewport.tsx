@@ -18,6 +18,7 @@ type ViewerMainViewportProps = {
   segmentingTaskName?: string | null;
   segmentingStatus?: "running" | "completed";
   onDismissSegmentingOverlay?: () => void;
+  onCancelSegmentation?: () => void;
   totalSegError: string | null;
   onDismissTotalSegError: () => void;
   isLicenseModalOpen?: boolean;
@@ -41,6 +42,7 @@ export const ViewerMainViewport: React.FC<ViewerMainViewportProps> = ({
   segmentingTaskName,
   segmentingStatus = "running",
   onDismissSegmentingOverlay,
+  onCancelSegmentation,
   totalSegError,
   onDismissTotalSegError,
   isLicenseModalOpen = false,
@@ -69,6 +71,7 @@ export const ViewerMainViewport: React.FC<ViewerMainViewportProps> = ({
           taskName={segmentingTaskName}
           status={segmentingStatus}
           onDismiss={onDismissSegmentingOverlay}
+          onCancel={onCancelSegmentation}
         />
       )}
 
