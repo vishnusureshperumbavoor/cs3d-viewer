@@ -1,4 +1,5 @@
 import { TotalSegTask } from "../../../constants/totalsegmentator-tasks";
+import { expandSearchTerms } from "../../../constants/searchSynonyms";
 
 export interface LoadedSegItem {
   seriesUid: string;
@@ -50,20 +51,31 @@ export function getCompletedSeg(
 }
 
 /**
- * Checks whether a TotalSegTask matches a search query across name, ID, structures, and description
+ * Checks whether a single term matches any field of a TotalSegTask
  */
-export function matchesTotalSegSearch(task: TotalSegTask, cleanQuery: string): boolean {
-  if (!cleanQuery) return true;
-  if (task.name.toLowerCase().includes(cleanQuery)) return true;
-  if (task.id.toLowerCase().includes(cleanQuery)) return true;
-  if (task.structures.some((s) => s.toLowerCase().includes(cleanQuery))) return true;
-  if (task.description.toLowerCase().includes(cleanQuery)) return true;
-  if (task.categoryLabel?.toLowerCase().includes(cleanQuery)) return true;
+function matchesSingleTerm(task: TotalSegTask, term: string): boolean {
+  if (!term) return true;
+  if (task.name.toLowerCase().includes(term)) return true;
+  if (task.id.toLowerCase().includes(term)) return true;
+  if (task.structures.some((s) => s.toLowerCase().includes(term))) return true;
+  if (task.description.toLowerCase().includes(term)) return true;
+  if (task.categoryLabel?.toLowerCase().includes(term)) return true;
   return false;
 }
 
 /**
- * Returns prioritized structure names for display, putting search matches first
+ * Checks whether a TotalSegTask matches a search query across name, ID, structures, and description.
+ * Automatically expands the query with medical synonyms (e.g. "kidney" also matches "renal").
+ */
+export function matchesTotalSegSearch(task: TotalSegTask, cleanQuery: string): boolean {
+  if (!cleanQuery) return true;
+  const terms = expandSearchTerms(cleanQuery);
+  return terms.some((term) => matchesSingleTerm(task, term));
+}
+
+/**
+ * Returns prioritized structure names for display, putting search matches first.
+ * Considers synonym-expanded terms when prioritizing.
  */
 export function getRenderedStructures(
   task: TotalSegTask,
@@ -77,12 +89,14 @@ export function getRenderedStructures(
     return task.structures.slice(0, 3);
   }
 
+  const terms = expandSearchTerms(cleanQuery);
   const matching = task.structures.filter((s) =>
-    s.toLowerCase().includes(cleanQuery)
+    terms.some((term) => s.toLowerCase().includes(term))
   );
   const nonMatching = task.structures.filter(
-    (s) => !s.toLowerCase().includes(cleanQuery)
+    (s) => !terms.some((term) => s.toLowerCase().includes(term))
   );
 
   return [...matching, ...nonMatching].slice(0, Math.max(3, matching.length));
 }
+
