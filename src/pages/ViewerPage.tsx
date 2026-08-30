@@ -373,6 +373,7 @@ export default function ViewerPage() {
           onDeleteSegSeries={handleDeleteSegSeries}
           licenseInfo={licenseInfo}
           onOpenLicenseModal={handleOpenLicenseModal}
+          activeSegSeriesUid={activeSegSeriesUid}
         />
       </main>
     </div>

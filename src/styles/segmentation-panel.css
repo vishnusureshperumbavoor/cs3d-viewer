@@ -721,13 +721,22 @@
 
 .totalseg-task-card {
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 7px;
-  transition: all 0.2s ease;
+  outline: none !important;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.totalseg-task-card:focus,
+.totalseg-task-card:focus-visible,
+.totalseg-task-card:active {
+  outline: none !important;
 }
 
 .totalseg-task-card.recommended {
@@ -894,20 +903,27 @@
   margin-top: 2px;
 }
 
-.totalseg-completed-badge {
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  padding: 1px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.02em;
+.totalseg-task-card.is-completed {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(16, 185, 129, 0.03);
 }
 
-.totalseg-task-card.is-completed {
-  border-color: rgba(16, 185, 129, 0.22);
-  background: rgba(16, 185, 129, 0.02);
+.totalseg-task-card.is-completed.is-clickable {
+  cursor: pointer;
+}
+
+.totalseg-task-card.is-completed.is-clickable:hover {
+  border-color: rgba(52, 211, 153, 0.65);
+  background: rgba(16, 185, 129, 0.07);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.15);
+  transform: translateY(-1px);
+}
+
+.totalseg-task-card.is-completed.is-active,
+.totalseg-task-card.is-completed.is-active:hover {
+  border-color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.25) !important;
 }
 
 .totalseg-completed-action-group {
@@ -916,34 +932,6 @@
   gap: 6px;
   width: 100%;
   justify-content: flex-end;
-}
-
-.totalseg-view-btn {
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  color: #34d399;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.totalseg-view-btn.icon-only {
-  width: 28px;
-  height: 26px;
-  padding: 0;
-}
-
-.totalseg-view-btn:hover {
-  background: rgba(16, 185, 129, 0.22);
-  border-color: rgba(16, 185, 129, 0.55);
-  color: #ffffff;
-  transform: translateY(-1px);
 }
 
 .totalseg-rerun-btn {

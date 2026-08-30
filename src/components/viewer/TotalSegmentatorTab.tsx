@@ -25,6 +25,7 @@ type TotalSegmentatorTabProps = {
   onSwitchTab?: (tab: "segmentation" | "presets" | "totalsegmentator") => void;
   licenseInfo?: { hasLicense: boolean; licenseMasked?: string | null };
   onOpenLicenseModal?: (task?: TotalSegTask) => void;
+  activeSegSeriesUid?: string | null;
 };
 
 const CATEGORIES = [
@@ -49,13 +50,14 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   segDataMap = {},
   onSelectSegSeries,
   onDeleteSegSeries,
-  onSwitchTab,
   licenseInfo: propsLicenseInfo,
   onOpenLicenseModal,
+  activeSegSeriesUid,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [filterCompletedOnly, setFilterCompletedOnly] = useState<boolean>(false);
   const [filterNoLicenseOnly, setFilterNoLicenseOnly] = useState<boolean>(false);
+  const [selectedCardTaskId, setSelectedCardTaskId] = useState<string | null>(null);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
   const [installedTasks, setInstalledTasks] = useState<string[]>([]);
   const [pushingTaskId, setPushingTaskId] = useState<string | null>(null);
@@ -264,9 +266,25 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
             const isThisTaskRunning = isSegmenting && runningTaskId === task.id;
             const completedSeg = getCompletedSeg(task.id);
             const isDownloaded = installedTasks.includes(task.id);
+            const isSegActive = Boolean(
+              completedSeg && (
+                selectedCardTaskId === task.id ||
+                (activeSegSeriesUid && completedSeg.seriesUid === activeSegSeriesUid)
+              )
+            );
 
             return (
-              <div key={task.id} className={`totalseg-task-card recommended ${completedSeg ? "is-completed" : ""}`}>
+              <div
+                key={task.id}
+                className={`totalseg-task-card recommended ${completedSeg ? "is-completed is-clickable" : ""} ${isSegActive ? "is-active" : ""}`}
+                onClick={() => {
+                  if (completedSeg && selectedSeriesUid) {
+                    setSelectedCardTaskId(task.id);
+                    onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
+                  }
+                }}
+                title={completedSeg ? (isSegActive ? `Currently displaying ${task.name}` : `Click to display ${task.name}`) : undefined}
+              >
                 {/* Header: Icon on left, Title on Top, Badges & Tags below Title */}
                 <div className="totalseg-task-header-section">
                   <div className="totalseg-task-icon-container">
@@ -337,26 +355,12 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                   {completedSeg ? (
                     <div className="totalseg-completed-action-group">
                       <button
-                        className="totalseg-view-btn icon-only"
-                        onClick={() => {
-                          if (selectedSeriesUid && completedSeg) {
-                            onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
-                            onSwitchTab?.("segmentation");
-                          }
-                        }}
-                        title={`View ${task.name} segmentation`}
-                        aria-label={`View ${task.name} segmentation`}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                          <polyline points="15 3 21 3 21 9" />
-                          <line x1="10" y1="14" x2="21" y2="3" />
-                        </svg>
-                      </button>
-                      <button
                         className="totalseg-rerun-btn"
                         disabled={isSegmenting || !selectedSeriesUid}
-                        onClick={() => handleRunTask(task)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRunTask(task);
+                        }}
                         title={`Re-run ${task.name}`}
                       >
                         {isThisTaskRunning ? (
@@ -369,7 +373,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                         <button
                           className="totalseg-delete-btn"
                           disabled={isSegmenting}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (window.confirm(`Delete ${task.name} segmentation?`)) {
                               onDeleteSegSeries(completedSeg.seriesUid);
                             }
@@ -400,7 +405,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                           <button
                             className={`totalseg-hf-push-btn ${isTaskUploadedToHF ? "pushed" : ""}`}
                             disabled={Boolean(pushingTaskId) || isSegmenting}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (isTaskUploadedToHF) {
                                 window.open(taskHfUrl, "_blank");
                               } else if (completedSeg) {
@@ -567,9 +573,25 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
             const isRecommended = recommendedIds.has(task.id);
             const completedSeg = getCompletedSeg(task.id);
             const isDownloaded = installedTasks.includes(task.id);
+            const isSegActive = Boolean(
+              completedSeg && (
+                selectedCardTaskId === task.id ||
+                (activeSegSeriesUid && completedSeg.seriesUid === activeSegSeriesUid)
+              )
+            );
 
             return (
-              <div key={task.id} className={`totalseg-task-card ${completedSeg ? "is-completed" : ""}`}>
+              <div
+                key={task.id}
+                className={`totalseg-task-card ${completedSeg ? "is-completed is-clickable" : ""} ${isSegActive ? "is-active" : ""}`}
+                onClick={() => {
+                  if (completedSeg && selectedSeriesUid) {
+                    setSelectedCardTaskId(task.id);
+                    onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
+                  }
+                }}
+                title={completedSeg ? (isSegActive ? `Currently displaying ${task.name}` : `Click to display ${task.name}`) : undefined}
+              >
                 {/* Header: Icon on left, Title on Top, Badges & Tags below Title */}
                 <div className="totalseg-task-header-section">
                   <div className="totalseg-task-icon-container">
@@ -643,26 +665,12 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                   {completedSeg ? (
                     <div className="totalseg-completed-action-group">
                       <button
-                        className="totalseg-view-btn icon-only"
-                        onClick={() => {
-                          if (selectedSeriesUid && completedSeg) {
-                            onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
-                            onSwitchTab?.("segmentation");
-                          }
-                        }}
-                        title={`View ${task.name} segmentation`}
-                        aria-label={`View ${task.name} segmentation`}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                          <polyline points="15 3 21 3 21 9" />
-                          <line x1="10" y1="14" x2="21" y2="3" />
-                        </svg>
-                      </button>
-                      <button
                         className="totalseg-rerun-btn"
                         disabled={isSegmenting || !selectedSeriesUid}
-                        onClick={() => handleRunTask(task)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRunTask(task);
+                        }}
                         title={`Re-run ${task.name}`}
                       >
                         {isThisTaskRunning ? (
@@ -675,7 +683,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                         <button
                           className="totalseg-delete-btn"
                           disabled={isSegmenting}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (window.confirm(`Delete ${task.name} segmentation?`)) {
                               onDeleteSegSeries(completedSeg.seriesUid);
                             }
@@ -706,7 +715,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                           <button
                             className={`totalseg-hf-push-btn ${isTaskUploadedToHF ? "pushed" : ""}`}
                             disabled={Boolean(pushingTaskId) || isSegmenting}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (isTaskUploadedToHF) {
                                 window.open(taskHfUrl, "_blank");
                               } else if (completedSeg) {

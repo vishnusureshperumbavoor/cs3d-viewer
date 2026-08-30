@@ -25,7 +25,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   // ──────────────────────────────────────────
   {
     id: "total",
-    name: "Whole Body (117 Structures)",
+    name: "Total (Whole Body)",
     category: "whole_body",
     categoryLabel: "Whole Body",
     description: "Comprehensive multi-organ segmentation (liver, spleen, kidneys, pancreas, GI tract, skeleton & major vessels).",
@@ -35,7 +35,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "total_v3",
-    name: "Whole Body v3 (nnU-Net ResEnc)",
+    name: "Total V3",
     category: "whole_body",
     categoryLabel: "Whole Body",
     description: "Latest generation whole-body multi-organ segmentation with updated residual encoder architecture.",
@@ -45,7 +45,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "body",
-    name: "Body Contour & Skin",
+    name: "Body",
     category: "whole_body",
     categoryLabel: "Whole Body",
     description: "Full external body habitus delineation and patient outer contour extraction.",
@@ -59,7 +59,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   // ──────────────────────────────────────────
   {
     id: "liver_vessels",
-    name: "Hepatic Vessels",
+    name: "Liver Vessels",
     category: "abdomen",
     categoryLabel: "Abdomen & Organs",
     description: "Dedicated portal vein and hepatic veins vascular tree segmentation.",
@@ -70,7 +70,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "liver_segments",
-    name: "Couinaud Liver Segments (I-VIII)",
+    name: "Liver Segments",
     category: "abdomen",
     categoryLabel: "Abdomen & Organs",
     description: "Functional anatomical liver segmentation into segments I to VIII according to Couinaud classification.",
@@ -81,7 +81,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "tissue_types",
-    name: "Body Composition (3-Class)",
+    name: "Tissue Types",
     category: "abdomen",
     categoryLabel: "Abdomen & Organs",
     description: "Visceral adipose tissue (VAT), subcutaneous adipose tissue (SAT), and skeletal muscle analysis.",
@@ -92,7 +92,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "tissue_4_types",
-    name: "Body Composition (4-Class)",
+    name: "Tissue 4 Types",
     category: "abdomen",
     categoryLabel: "Abdomen & Organs",
     description: "Extended sarcopenia assessment including intermuscular adipose tissue (IMAT), SAT, VAT, and skeletal muscle.",
@@ -103,7 +103,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "abdominal_muscles",
-    name: "Abdominal Wall Muscles (22 Classes)",
+    name: "Abdominal Muscles",
     category: "abdomen",
     categoryLabel: "Abdomen & Organs",
     description: "High-resolution segmentation of individual abdominal wall, retroperitoneal, and back muscle groups.",
@@ -113,7 +113,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "trunk_cavities",
-    name: "Trunk Body Cavities",
+    name: "Trunk Cavities",
     category: "abdomen",
     categoryLabel: "Abdomen & Organs",
     description: "Major anatomical compartments of the torso (abdominal cavity, thoracic cavity, pericardium, mediastinum).",
@@ -127,7 +127,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   // ──────────────────────────────────────────
   {
     id: "heartchambers_highres",
-    name: "Cardiac Chambers (High-Res)",
+    name: "Heart Chambers (High-Res)",
     category: "cardiac_vascular",
     categoryLabel: "Cardiac & Vascular",
     description: "High-resolution four-chamber cardiac segmentation with myocardium and great vessel roots.",
@@ -138,7 +138,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "ventricle_parts",
-    name: "Ventricle Sub-structures (12 Classes)",
+    name: "Ventricle Parts",
     category: "cardiac_vascular",
     categoryLabel: "Cardiac & Vascular",
     description: "Detailed ventricular components including papillary muscles, outflow tracts, and interventricular septum.",
@@ -148,7 +148,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "coronary_arteries",
-    name: "Coronary Arteries (CTA)",
+    name: "Coronary Arteries",
     category: "cardiac_vascular",
     categoryLabel: "Cardiac & Vascular",
     description: "Left anterior descending (LAD), left circumflex (LCx), and right coronary artery (RCA) tree.",
@@ -160,7 +160,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "aortic_sinuses",
-    name: "Aortic Valve Sinuses",
+    name: "Aortic Sinuses",
     category: "cardiac_vascular",
     categoryLabel: "Cardiac & Vascular",
     description: "Left, right, and non-coronary aortic sinuses and aortic root anatomy.",
@@ -172,7 +172,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "aorta_annulus",
-    name: "Aorta Annulus & STJ (TAVR)",
+    name: "Aorta Annulus",
     category: "cardiac_vascular",
     categoryLabel: "Cardiac & Vascular",
     description: "Aortic valve annulus proper and sinotubular junction for transcatheter aortic valve replacement (TAVR) planning.",
@@ -184,7 +184,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "aortic_dissection",
-    name: "Aortic Dissection (True/False Lumen)",
+    name: "Aortic Dissection",
     category: "cardiac_vascular",
     categoryLabel: "Cardiac & Vascular",
     description: "Automated delineation of aortic true lumen and false lumen in acute aortic dissection.",
@@ -196,7 +196,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "renal_arteries",
-    name: "Renal & Visceral Arteries",
+    name: "Renal Arteries",
     category: "cardiac_vascular",
     categoryLabel: "Cardiac & Vascular",
     description: "Major visceral aorta branches: celiac trunk, superior mesenteric artery (SMA), and left/right renal arteries.",
@@ -224,7 +224,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   // ──────────────────────────────────────────
   {
     id: "lung_vessels",
-    name: "Pulmonary Vessels",
+    name: "Lung Vessels",
     category: "chest",
     categoryLabel: "Chest & Lungs",
     description: "Detailed pulmonary arterial and venous vascular tree throughout all lung lobes.",
@@ -234,7 +234,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "lung_nodules",
-    name: "Pulmonary Nodules",
+    name: "Lung Nodules",
     category: "chest",
     categoryLabel: "Chest & Lungs",
     description: "Detection and volumetric segmentation of suspicious solid and sub-solid pulmonary lung nodules.",
@@ -244,7 +244,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "pleural_pericard_effusion",
-    name: "Pleural & Pericardial Effusion",
+    name: "Pleural Pericard Effusion",
     category: "chest",
     categoryLabel: "Chest & Lungs",
     description: "Automated quantification and segmentation of abnormal fluid accumulation in pleural and pericardial cavities.",
@@ -254,7 +254,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "breasts",
-    name: "Breast Tissue",
+    name: "Breasts",
     category: "chest",
     categoryLabel: "Chest & Lungs",
     description: "Delineation of bilateral glandular and fibroadipose breast parenchyma.",
@@ -268,7 +268,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   // ──────────────────────────────────────────
   {
     id: "vertebrae_body",
-    name: "Spine / Vertebral Bodies",
+    name: "Vertebrae Body",
     category: "musculoskeletal",
     categoryLabel: "Musculoskeletal & Spine",
     description: "Vertebral bodies segmentation separated from posterior spinal elements and intervertebral discs.",
@@ -278,7 +278,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "vertebrae_pp",
-    name: "Individual Vertebrae (C1-L5)",
+    name: "Vertebrae (Posterior Processes)",
     category: "musculoskeletal",
     categoryLabel: "Musculoskeletal & Spine",
     description: "Complete spine numbering with 24 individual vertebral classes from cervical C1 through lumbar L5.",
@@ -288,7 +288,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "vertebrae_pp_refined",
-    name: "Refined Vertebrae (C1-L5)",
+    name: "Vertebrae Refined (Posterior Processes)",
     category: "musculoskeletal",
     categoryLabel: "Musculoskeletal & Spine",
     description: "Refined high-fidelity boundary segmentation of 24 individual vertebrae from C1 to L5.",
@@ -298,7 +298,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "appendicular_bones",
-    name: "Appendicular Bones (Extremities)",
+    name: "Appendicular Bones",
     category: "musculoskeletal",
     categoryLabel: "Musculoskeletal & Spine",
     description: "Extremity skeletal system segmentation (femur, tibia, fibula, humerus, radius, ulna, carpal, tarsal, phalanges).",
@@ -309,7 +309,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "thigh_shoulder_muscles",
-    name: "Thigh & Shoulder Muscles",
+    name: "Thigh Shoulder Muscles",
     category: "musculoskeletal",
     categoryLabel: "Musculoskeletal & Spine",
     description: "Individual muscle bundle segmentation for limb, rotator cuff, and thigh musculature (18 classes).",
@@ -320,7 +320,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "hip_implant",
-    name: "Hip Arthroplasty Implant",
+    name: "Hip Implant",
     category: "musculoskeletal",
     categoryLabel: "Musculoskeletal & Spine",
     description: "Localization and segmentation of prosthetic hip joint implants and metal hardware.",
@@ -334,7 +334,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   // ──────────────────────────────────────────
   {
     id: "brain_structures",
-    name: "Brain Sub-structures (16 Classes)",
+    name: "Brain Structures",
     category: "head_neck",
     categoryLabel: "Head & Neck / Brain",
     description: "Deep gray nuclei, cerebral ventricles, brainstem, internal capsule, insula, and cerebral lobes.",
@@ -345,7 +345,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "head_glands_cavities",
-    name: "Head Glands & Cavities",
+    name: "Head Glands Cavities",
     category: "head_neck",
     categoryLabel: "Head & Neck / Brain",
     description: "Parotid & submandibular salivary glands, nasal cavities, orbits, and paranasal sinuses.",
@@ -355,7 +355,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "head_muscles",
-    name: "Head & Facial Muscles (11 Classes)",
+    name: "Head Muscles",
     category: "head_neck",
     categoryLabel: "Head & Neck / Brain",
     description: "Detailed masticatory and facial expression muscle groups.",
@@ -365,7 +365,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "headneck_bones_vessels",
-    name: "Head & Neck Bones & Great Vessels",
+    name: "Headneck Bones Vessels",
     category: "head_neck",
     categoryLabel: "Head & Neck / Brain",
     description: "Cervical spine, skull base osseous anatomy, carotid arteries, and internal jugular veins.",
@@ -376,7 +376,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "headneck_muscles",
-    name: "Head & Neck Muscles (23 Classes)",
+    name: "Headneck Muscles",
     category: "head_neck",
     categoryLabel: "Head & Neck / Brain",
     description: "Sternocleidomastoid, trapezius, scalenes, and pharyngeal muscle groups.",
@@ -386,7 +386,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "oculomotor_muscles",
-    name: "Oculomotor Muscles & Orbit (19 Classes)",
+    name: "Oculomotor Muscles",
     category: "head_neck",
     categoryLabel: "Head & Neck / Brain",
     description: "Extraocular eye muscles (recti, obliques), optic nerve, eyeball, and retrobulbar orbital fat.",
@@ -396,7 +396,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "craniofacial_structures",
-    name: "Craniofacial Bones (7 Classes)",
+    name: "Craniofacial Structures",
     category: "head_neck",
     categoryLabel: "Head & Neck / Brain",
     description: "Bony structures of the midface and skull base: maxilla, mandible, zygomatic bones, nasal bone.",
@@ -406,7 +406,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "teeth",
-    name: "Complete Dental Arch (77 Teeth Classes)",
+    name: "Teeth",
     category: "head_neck",
     categoryLabel: "Head & Neck / Brain",
     description: "Every individual tooth according to the universal FDI notation (incisors, canines, premolars, molars, root canals).",
@@ -416,7 +416,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "face",
-    name: "Facial Soft Tissue & Defacing",
+    name: "Face",
     category: "head_neck",
     categoryLabel: "Head & Neck / Brain",
     description: "Facial contour segmentation for research de-identification and clinical aesthetic evaluation.",
@@ -431,7 +431,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   // ──────────────────────────────────────────
   {
     id: "cerebral_bleed",
-    name: "Intracranial Hemorrhage",
+    name: "Cerebral Bleed",
     category: "pathology",
     categoryLabel: "Pathology & Emergency",
     description: "Emergency acute intracranial bleeding detection (subarachnoid, subdural, epidural, intraparenchymal).",
@@ -441,7 +441,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "liver_lesions",
-    name: "Focal Liver Lesions",
+    name: "Liver Lesions",
     category: "pathology",
     categoryLabel: "Pathology & Emergency",
     description: "Segmentation and volumetric assessment of primary and metastatic focal liver lesions.",
@@ -452,7 +452,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "kidney_cysts",
-    name: "Renal Cysts",
+    name: "Kidney Cysts",
     category: "pathology",
     categoryLabel: "Pathology & Emergency",
     description: "Automated identification, localization, and volumetric measurement of renal cysts.",
@@ -466,7 +466,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   // ──────────────────────────────────────────
   {
     id: "total_mr",
-    name: "Total MRI (Whole Body 50 Classes)",
+    name: "Total MR",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Multi-organ segmentation model specifically trained on Magnetic Resonance Imaging sequences.",
@@ -476,7 +476,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "body_mr",
-    name: "MRI Body Contour",
+    name: "Body MR",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Body trunk boundary extraction on abdominal and whole-body MR sequences.",
@@ -486,7 +486,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "vertebrae_mr",
-    name: "MRI Vertebrae (25 Classes)",
+    name: "Vertebrae MR",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Individual vertebral bodies and sacrum segmentation on spine MRI exams.",
@@ -496,7 +496,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "appendicular_bones_mr",
-    name: "MRI Appendicular Bones",
+    name: "Appendicular Bones MR",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Extremity bones delineated on musculoskeletal MR examinations.",
@@ -507,7 +507,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "thigh_shoulder_muscles_mr",
-    name: "MRI Thigh & Shoulder Muscles",
+    name: "Thigh Shoulder Muscles MR",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Individual musculature assessment on limb and girdle MRI sequences (18 muscle groups).",
@@ -518,7 +518,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "tissue_types_mr",
-    name: "MRI Body Composition",
+    name: "Tissue Types MR",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Fat and muscle compartment quantification on Dixon and T1/T2 abdominal MRI.",
@@ -529,7 +529,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "liver_segments_mr",
-    name: "MRI Couinaud Liver Segments",
+    name: "Liver Segments MR",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Couinaud liver segments I-VIII on liver MRI protocols.",
@@ -539,7 +539,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "liver_lesions_mr",
-    name: "MRI Focal Liver Lesions",
+    name: "Liver Lesions MR",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Focal liver lesion delineation on contrast-enhanced or diffusion MRI.",
@@ -549,7 +549,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "brain_aneurysm",
-    name: "MRI Intracranial Aneurysm",
+    name: "Brain Aneurysm",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Automated localization and segmentation of cerebral arterial aneurysms on MR Angiography (MRA).",
@@ -559,7 +559,7 @@ export const TOTALSEGMENTATOR_TASKS: TotalSegTask[] = [
   },
   {
     id: "face_mr",
-    name: "MRI Facial Defacing",
+    name: "Face MR",
     category: "mri",
     categoryLabel: "Magnetic Resonance (MRI)",
     description: "Patient face contour removal on head MRI for HIPAA-compliant research anonymization.",
