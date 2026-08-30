@@ -1,4 +1,5 @@
 import { parseSeg, extractSegmentationInfo } from "../utils/parse-dicom";
+import { API_ENDPOINTS } from "../config/api";
 
 export interface SegmentationResult {
     parsedLabelmaps: any[];
@@ -16,9 +17,10 @@ export const totalsegmentatorService = {
         studyInstanceUid: string,
         seriesInstanceUid: string,
         task: string = "total",
-        fast: boolean = true
+        fast: boolean = true,
+        signal?: AbortSignal
     ): Promise<{ instanceId: string; seriesInstanceUid: string }> => {
-        const response = await fetch("http://localhost:8000/api/segment/total", {
+        const response = await fetch(API_ENDPOINTS.SEGMENT.TOTAL, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -29,6 +31,7 @@ export const totalsegmentatorService = {
                 task,
                 fast,
             }),
+            signal,
         });
 
         if (!response.ok) {
@@ -48,11 +51,32 @@ export const totalsegmentatorService = {
     },
 
     /**
+     * Cancels an active TotalSegmentator process for a series.
+     */
+    cancel: async (seriesInstanceUid: string): Promise<boolean> => {
+        try {
+            const response = await fetch(API_ENDPOINTS.SEGMENT.CANCEL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ seriesInstanceUid }),
+            });
+            if (!response.ok) return false;
+            const data = await response.json();
+            return Boolean(data.cancelled);
+        } catch (e) {
+            console.warn("Failed to cancel TotalSegmentator process:", e);
+            return false;
+        }
+    },
+
+    /**
      * Fetches the list of TotalSegmentator model tasks that are already downloaded & cached locally.
      */
     getInstalledTasks: async (): Promise<string[]> => {
         try {
-            const response = await fetch("http://localhost:8000/api/segment/installed-models");
+            const response = await fetch(API_ENDPOINTS.SEGMENT.INSTALLED_MODELS);
             if (!response.ok) return [];
             const data = await response.json();
             return data.installedTasks || [];
@@ -63,11 +87,58 @@ export const totalsegmentatorService = {
     },
 
     /**
+     * Gets current TotalSegmentator license status.
+     */
+    getLicenseStatus: async (): Promise<{ hasLicense: boolean; licenseMasked?: string; status: string }> => {
+        try {
+            const response = await fetch(API_ENDPOINTS.SEGMENT.LICENSE);
+            if (!response.ok) return { hasLicense: false, status: "unregistered" };
+            return await response.json();
+        } catch (e) {
+            console.warn("Failed to fetch license status:", e);
+            return { hasLicense: false, status: "unregistered" };
+        }
+    },
+
+    /**
+     * Sets / activates TotalSegmentator academic license key.
+     */
+    setLicense: async (licenseNumber: string, skipValidation: boolean = false): Promise<{ success: boolean; message: string }> => {
+        const response = await fetch(API_ENDPOINTS.SEGMENT.LICENSE, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ licenseNumber, skipValidation }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || "Failed to set license.");
+        }
+        return data;
+    },
+
+    /**
+     * Removes the active TotalSegmentator license key.
+     */
+    removeLicense: async (): Promise<boolean> => {
+        try {
+            const response = await fetch(API_ENDPOINTS.SEGMENT.LICENSE, {
+                method: "DELETE",
+            });
+            return response.ok;
+        } catch (e) {
+            console.error("Failed to remove license:", e);
+            return false;
+        }
+    },
+
+    /**
      * Deletes a generated segmentation series from Orthanc backend.
      */
     deleteSegSeries: async (seriesUid: string): Promise<boolean> => {
         try {
-            const response = await fetch(`http://localhost:8000/api/segment/series/${encodeURIComponent(seriesUid)}`, {
+            const response = await fetch(API_ENDPOINTS.SEGMENT.SERIES(seriesUid), {
                 method: "DELETE",
             });
             return response.ok;
@@ -81,7 +152,7 @@ export const totalsegmentatorService = {
      * Pushes a generated segmentation series to Hugging Face dataset repo.
      */
     pushSegToHuggingFace: async (seriesUid: string, studyFolder?: string): Promise<{ status: string; url: string; filename: string }> => {
-        const response = await fetch("http://localhost:8000/api/segment/push-hf", {
+        const response = await fetch(API_ENDPOINTS.SEGMENT.PUSH_HF, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -105,9 +176,7 @@ export const totalsegmentatorService = {
      */
     getHFSegmentations: async (studyFolder?: string): Promise<Array<{ filename: string; path: string; url: string }>> => {
         try {
-            const url = studyFolder
-                ? `http://localhost:8000/api/segment/hf-files?study_folder=${encodeURIComponent(studyFolder)}`
-                : "http://localhost:8000/api/segment/hf-files";
+            const url = API_ENDPOINTS.SEGMENT.HF_FILES(studyFolder);
             const response = await fetch(url);
             if (!response.ok) return [];
             const data = await response.json();
@@ -116,6 +185,80 @@ export const totalsegmentatorService = {
             console.warn("Failed to fetch Hugging Face segmentations:", e);
             return [];
         }
+    },
+
+    /**
+     * Downloads the DICOM SEG (.dcm) file for a series from backend / Orthanc.
+     */
+    downloadSegmentation: async (seriesUid: string, defaultFilename?: string): Promise<void> => {
+        try {
+            // First try FastAPI backend download endpoint
+            const res = await fetch(API_ENDPOINTS.SEGMENT.DOWNLOAD(seriesUid));
+            if (res.ok) {
+                const blob = await res.blob();
+                let filename = defaultFilename
+                    ? `${defaultFilename.replace(/[^a-zA-Z0-9_-]/g, "_")}.dcm`
+                    : `segmentation_${seriesUid.slice(-6)}.dcm`;
+
+                const disposition = res.headers.get("content-disposition");
+                if (disposition && disposition.includes("filename=")) {
+                    const match = disposition.match(/filename="?([^";]+)"?/);
+                    if (match && match[1]) {
+                        filename = match[1];
+                    }
+                }
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                return;
+            }
+        } catch (e) {
+            console.warn("Backend download endpoint failed, trying Orthanc fallback:", e);
+        }
+
+        // Fallback: Fetch directly from Orthanc via lookup
+        const authHeaders = {
+            Authorization: "Basic " + btoa("orthanc:orthanc"),
+        };
+        const lookupResp = await fetch("/tools/lookup", {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain",
+                ...authHeaders,
+            },
+            body: seriesUid,
+        });
+        if (!lookupResp.ok) throw new Error("Could not find series in Orthanc.");
+        const results = await lookupResp.json();
+        const seriesItem = Array.isArray(results) ? results.find((r: any) => r.Type === "Series") : null;
+        if (!seriesItem?.ID) throw new Error("Series ID not found.");
+
+        const seriesDetailResp = await fetch(`/series/${seriesItem.ID}`, { headers: authHeaders });
+        const seriesDetail = await seriesDetailResp.json();
+        const instanceId = seriesDetail.Instances?.[0];
+        if (!instanceId) throw new Error("No instances in series.");
+
+        const fileResp = await fetch(`/instances/${instanceId}/file`, { headers: authHeaders });
+        if (!fileResp.ok) throw new Error("Failed to download file from Orthanc.");
+        const blob = await fileResp.blob();
+
+        const filename = defaultFilename
+            ? `${defaultFilename.replace(/[^a-zA-Z0-9_-]/g, "_")}.dcm`
+            : `segmentation_${seriesUid.slice(-6)}.dcm`;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
     },
 
     /**

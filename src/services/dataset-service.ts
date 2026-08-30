@@ -1,6 +1,5 @@
 import { SampleDownloadProgress } from "../types/worklist";
-
-const BACKEND_URL = "http://localhost:8000";
+import { API_ENDPOINTS } from "../config/api";
 
 export const datasetService = {
   /**
@@ -8,7 +7,7 @@ export const datasetService = {
    */
   checkSampleStatus: async (): Promise<{ exists: boolean; studyInstanceUid: string | null }> => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/dataset/sample-status`);
+      const response = await fetch(API_ENDPOINTS.DATASET.SAMPLE_STATUS);
       if (response.ok) {
         return await response.json();
       }
@@ -25,7 +24,7 @@ export const datasetService = {
     onProgress: (progress: SampleDownloadProgress) => void
   ): Promise<string | null> => {
     return new Promise((resolve, reject) => {
-      const eventSource = new EventSource(`${BACKEND_URL}/api/dataset/import-sample-stream`);
+      const eventSource = new EventSource(API_ENDPOINTS.DATASET.IMPORT_SAMPLE_STREAM);
 
       eventSource.onmessage = (event) => {
         try {

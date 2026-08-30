@@ -4,6 +4,7 @@ type TotalSegmentatorLoadingOverlayProps = {
   taskName?: string | null;
   status?: "running" | "completed";
   onDismiss?: () => void;
+  onCancel?: () => void;
 };
 
 const STAGES = [
@@ -37,6 +38,7 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
   taskName = "total",
   status = "running",
   onDismiss,
+  onCancel,
 }) => {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const wakeLockRef = useRef<any>(null);
@@ -201,17 +203,15 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
           })}
         </div>
 
-        {/* Close Button on Modal (Available when completed) */}
-        {isCompleted && (
-          <button
-            className="totalseg-modal-close-btn"
-            onClick={onDismiss}
-            aria-label="Close"
-            title="Close"
-          >
-            ✕
-          </button>
-        )}
+        {/* Close Button on Modal (Close if completed, Cancel if running) */}
+        <button
+          className="totalseg-modal-close-btn"
+          onClick={isCompleted ? onDismiss : onCancel}
+          aria-label={isCompleted ? "Close" : "Cancel segmentation"}
+          title={isCompleted ? "Close" : "Cancel segmentation"}
+        >
+          ✕
+        </button>
 
         {/* Footer Actions */}
         {isCompleted ? (
@@ -225,7 +225,29 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
             <div className="totalseg-hardware-badge">
               <span>⚡ Multi-Threaded Engine</span>
             </div>
-            <span className="totalseg-footer-hint">Please stand by while DICOM SEG generates</span>
+            {onCancel && (
+              <button
+                type="button"
+                className="totalseg-overlay-cancel-btn"
+                onClick={onCancel}
+                title="Cancel segmentation"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                <span>Cancel Segmentation</span>
+              </button>
+            )}
           </div>
         )}
       </div>

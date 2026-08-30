@@ -271,7 +271,36 @@
   flex-shrink: 0;
 }
 
-.seg-series-hf-btn {
+.seg-series-download-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.seg-series-download-btn:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.3);
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+.seg-series-download-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.seg-series-hf-btn,
+.seg-series-upload-btn {
   width: 20px;
   height: 20px;
   border-radius: 4px;
@@ -287,19 +316,22 @@
   flex-shrink: 0;
 }
 
-.seg-series-hf-btn:hover:not(:disabled) {
+.seg-series-hf-btn:hover:not(:disabled),
+.seg-series-upload-btn:hover:not(:disabled) {
   background: rgba(245, 158, 11, 0.3);
   border-color: rgba(245, 158, 11, 0.6);
   transform: scale(1.1);
 }
 
-.seg-series-hf-btn.pushed {
+.seg-series-hf-btn.pushed,
+.seg-series-upload-btn.pushed {
   background: rgba(16, 185, 129, 0.15);
   border-color: rgba(16, 185, 129, 0.45);
   color: #34d399;
 }
 
-.seg-series-hf-btn:disabled {
+.seg-series-hf-btn:disabled,
+.seg-series-upload-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

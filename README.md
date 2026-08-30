@@ -26,7 +26,7 @@ A state-of-the-art, web-based medical imaging workspace for DICOM visualization 
 - **STL Export**: Export any segmented organ or pathological structure to a 3D-printable `.stl` file with real-world millimeter coordinates.
 
 ### 🧠 TotalSegmentator v2 AI Hub
-- **15+ Automated Deep Learning Tasks**: Whole Body (117 anatomical structures), Abdominal Organs & Vessels, Spine & Vertebrae, Cardiac Chambers & Coronary Arteries, Pulmonary Vessels, Head & Brain, and MRI models.
+- **45+ Automated Deep Learning Tasks**: Whole Body (117 anatomical structures), Abdominal Organs & Vessels, Spine & Vertebrae, Cardiac Chambers & Coronary Arteries, Pulmonary Vessels, Head, Brain & Dental Arch (77 teeth classes), Pathology/Emergency detection, and specialized MRI models.
 - **Intelligent Recommendation Engine**: Automatically suggests relevant AI segmentation tasks based on DICOM series metadata (modality, body part examined, contrast agent, slice count).
 - **Fast / High-Res Modes**: Fast 3mm inference for rapid previews or full-resolution inference for fine anatomical detail.
 - **Compliance**: Generates standard DICOM SEG objects and automatically stores them in Orthanc via STOW-RS.
@@ -173,26 +173,59 @@ TELEGRAM_CHAT_ID=your_telegram_chat_id
 
 ## 🧬 TotalSegmentator Task Catalog
 
-CS3D Viewer provides built-in UI triggers for over 15 clinical AI segmentation models:
+CS3D Viewer provides built-in UI triggers and automated recommendation heuristics for **49 clinical AI segmentation models**:
 
-| Category | Task ID | Model Name | Anatomy / Target Structures | Modality |
-|---|---|---|---|---|
-| **Whole Body** | `total` | Whole Body (117 Structures) | Liver, spleen, kidneys, pancreas, GI tract, skeleton, major vessels | CT |
-| **Abdomen** | `liver_vessels` | Hepatic Vessels | Portal vein, hepatic veins, inferior vena cava | CT (CE) |
-| **Abdomen** | `tissue_types` | Body Composition | Visceral fat (VAT), subcutaneous fat (SAT), skeletal muscle, bone | CT |
-| **Musculoskeletal** | `vertebrae_body` | Vertebral Bodies | Individual cervical, thoracic, lumbar vertebrae, and sacrum | CT |
-| **Musculoskeletal** | `appendicular_bones` | Appendicular Bones | Extremity bones (femur, tibia, fibula, humerus, radius, ulna, etc.) | CT |
-| **Musculoskeletal** | `thigh_shoulder_muscles` | Limb Musculature | Quadriceps, hamstrings, gluteal, deltoid, rotator cuff muscles | CT |
-| **Cardiac & Vascular** | `heartchambers_highres` | Cardiac Chambers | Left/Right ventricles and atria, myocardium, ascending aorta | CT |
-| **Cardiac & Vascular** | `coronary_arteries` | Coronary Arteries | LAD, LCx, RCA arterial tree | CT (CTA) |
-| **Cardiac & Vascular** | `aortic_sinuses` | Aortic Valve Sinuses | Left, right, and non-coronary aortic sinuses | CT (CE) |
-| **Chest & Lungs** | `lung_vessels` | Pulmonary Vessels | Pulmonary arterial and venous vascular trees across all lobes | CT |
-| **Chest & Lungs** | `pleural_pericard_effusion` | Fluid Effusions | Pleural and pericardial fluid accumulations | CT |
-| **Head & Brain** | `brain_structures` | Brain Sub-structures | Deep gray nuclei, ventricles, brainstem, cerebellum, hippocampus | CT |
-| **Head & Brain** | `cerebral_bleed` | Intracranial Hemorrhage | Subarachnoid, subdural, epidural, and intraparenchymal bleeding | CT |
-| **Head & Brain** | `head_glands_cavities` | Head Glands & Cavities | Parotid/submandibular glands, nasal cavity, orbits, sinuses | CT |
-| **Head & Brain** | `headneck_muscles` | Head & Neck Muscles | Sternocleidomastoid, trapezius, masticatory muscle groups | CT |
-| **MRI** | `total_mr` | Total MRI | Multi-organ segmentation optimized for MR sequences | MR |
+| Category | Task ID | Model Name | Anatomy / Target Structures | Modality | License |
+|---|---|---|---|---|---|
+| **Whole Body** | `total` | Whole Body (117 Structures) | Liver, spleen, kidneys, pancreas, GI tract, skeleton, major vessels | CT | Open |
+| **Whole Body** | `total_v3` | Whole Body v3 (ResEnc) | Updated nnU-Net residual encoder whole-body multi-organ architecture | CT | Open |
+| **Whole Body** | `body` | Body Contour & Skin | Complete external body trunk habitus and skin outer boundary | CT | Open |
+| **Abdomen** | `liver_vessels` | Hepatic Vessels | Dedicated portal vein, hepatic veins, inferior vena cava | CT (CE) | Open |
+| **Abdomen** | `liver_segments` | Couinaud Liver Segments | Functional hepatic segments I through VIII | CT (CE) | Open |
+| **Abdomen** | `tissue_types` | Body Composition (3-Class) | Visceral fat (VAT), subcutaneous fat (SAT), skeletal muscle | CT | Academic Key |
+| **Abdomen** | `tissue_4_types` | Body Composition (4-Class) | Sarcopenia assessment: VAT, SAT, skeletal muscle, intermuscular fat (IMAT) | CT | Academic Key |
+| **Abdomen** | `abdominal_muscles` | Abdominal Wall Musculature | Rectus abdominis, obliques, transversus, psoas, erector spinae (22 classes) | CT | Open |
+| **Abdomen** | `trunk_cavities` | Trunk Body Cavities | Abdominal cavity, thoracic cavity, pericardium, mediastinum boundaries | CT | Open |
+| **Cardiac & Vascular** | `heartchambers_highres` | Cardiac Chambers (High-Res) | Left/Right ventricles and atria, myocardium, ascending aorta | CT | Academic Key |
+| **Cardiac & Vascular** | `ventricle_parts` | Ventricle Sub-structures | Papillary muscles, interventricular septum, outflow tracts (12 classes) | CT | Open |
+| **Cardiac & Vascular** | `coronary_arteries` | Coronary Arteries (CTA) | LAD, LCx, RCA arterial tree | CT (CTA) | Academic Key |
+| **Cardiac & Vascular** | `aortic_sinuses` | Aortic Valve Sinuses | Left, right, and non-coronary aortic sinuses, LV outflow tract | CT (CE) | Academic Key |
+| **Cardiac & Vascular** | `aorta_annulus` | Aorta Annulus & STJ | Aortic valve annulus proper and sinotubular junction for TAVR planning | CT (CE) | Academic Key |
+| **Cardiac & Vascular** | `aortic_dissection` | Aortic Dissection | Automated delineation of aortic true lumen and false lumen | CT (CE) | Academic Key |
+| **Cardiac & Vascular** | `renal_arteries` | Renal & Visceral Arteries | Celiac trunk, superior mesenteric artery (SMA), left/right renal arteries | CT (CE) | Academic Key |
+| **Cardiac & Vascular** | `pulmonary_artery_landmarks` | Pulmonary Artery Landmarks | Pulmonary trunk annulus, sinotubular junction, bifurcation, branch origins | CT (CE) | Academic Key |
+| **Chest & Lungs** | `lung_vessels` | Pulmonary Vessels | Pulmonary arterial and venous vascular trees across all lobes | CT | Open |
+| **Chest & Lungs** | `lung_nodules` | Pulmonary Nodules | Suspicious solid and sub-solid pulmonary lung nodules detection | CT | Open |
+| **Chest & Lungs** | `pleural_pericard_effusion` | Fluid Effusions | Pleural and pericardial abnormal fluid accumulations | CT | Open |
+| **Chest & Lungs** | `breasts` | Breast Tissue | Bilateral glandular and fibroadipose breast parenchyma | CT | Open |
+| **Musculoskeletal** | `vertebrae_body` | Vertebral Bodies | Vertebral bodies separated from posterior elements and intervertebral discs | CT | Open |
+| **Musculoskeletal** | `vertebrae_pp` | Individual Vertebrae (C1-L5) | Complete spine numbering with 24 individual vertebrae (C1 to L5) | CT | Open |
+| **Musculoskeletal** | `vertebrae_pp_refined` | Refined Vertebrae (C1-L5) | Refined high-fidelity boundary segmentation of 24 individual vertebrae | CT | Open |
+| **Musculoskeletal** | `appendicular_bones` | Appendicular Extremity Bones | Patella, tibia, fibula, radius, ulna, carpal, tarsal, phalanges | CT | Academic Key |
+| **Musculoskeletal** | `thigh_shoulder_muscles` | Limb & Shoulder Musculature | Quadriceps, hamstrings, gluteal, deltoid, rotator cuff (18 muscles) | CT | Academic Key |
+| **Musculoskeletal** | `hip_implant` | Hip Arthroplasty Implant | Prosthetic hip joint replacement hardware localization | CT | Open |
+| **Head, Neck & Dental** | `brain_structures` | Brain Sub-structures | Deep gray nuclei, ventricles, brainstem, cerebellum, insula, lobes (16 classes) | CT | Academic Key |
+| **Head, Neck & Dental** | `head_glands_cavities` | Head Glands & Cavities | Parotid/submandibular glands, nasal cavity, orbits, sinuses | CT | Open |
+| **Head, Neck & Dental** | `head_muscles` | Head & Facial Muscles | Masseter, temporalis, medial/lateral pterygoids (11 classes) | CT | Open |
+| **Head, Neck & Dental** | `headneck_bones_vessels` | Head & Neck Bones & Vessels | Carotid arteries, internal jugular veins, skull base and cervical bones | CT (CE) | Open |
+| **Head, Neck & Dental** | `headneck_muscles` | Head & Neck Muscles | Sternocleidomastoid, trapezius, scalenes, masticatory muscles (23 classes) | CT | Open |
+| **Head, Neck & Dental** | `oculomotor_muscles` | Oculomotor Muscles & Orbit | Rectus/oblique muscles, optic nerve, eyeball, retrobulbar orbital fat (19 classes) | CT | Open |
+| **Head, Neck & Dental** | `craniofacial_structures` | Craniofacial Bones | Maxilla, mandible, zygomatic bones, nasal osseous framework | CT | Open |
+| **Head, Neck & Dental** | `teeth` | Complete Dental Arch | Universal FDI notation for all 32 adult teeth, pulp cavities, mandibular canals | CT | Open |
+| **Head, Neck & Dental** | `face` | Facial Mask & Defacing | Facial contour for research de-identification and aesthetic assessment | CT | Academic Key |
+| **Pathology** | `cerebral_bleed` | Intracranial Hemorrhage | Acute subarachnoid, subdural, epidural, and intraparenchymal hemorrhage | CT | Open |
+| **Pathology** | `liver_lesions` | Focal Liver Lesions | Primary and metastatic focal liver lesions | CT (CE) | Open |
+| **Pathology** | `kidney_cysts` | Renal Cysts | Automated identification, localization, and volumetry of renal cysts | CT | Open |
+| **MRI Sequences** | `total_mr` | Total MRI (50 Structures) | Multi-organ segmentation specifically trained on MR sequences | MR | Open |
+| **MRI Sequences** | `body_mr` | MRI Body Contour | External body trunk boundary on abdominal and pelvic MR sequences | MR | Open |
+| **MRI Sequences** | `vertebrae_mr` | MRI Vertebrae (25 Classes) | Individual vertebral bodies (C1-L5) and sacrum on spine MRI | MR | Open |
+| **MRI Sequences** | `appendicular_bones_mr` | MRI Appendicular Bones | Extremity osseous delineation on musculoskeletal MR sequences | MR | Academic Key |
+| **MRI Sequences** | `thigh_shoulder_muscles_mr` | MRI Thigh & Shoulder Muscles | Musculature quantification on limb and girdle MR scans (18 classes) | MR | Academic Key |
+| **MRI Sequences** | `tissue_types_mr` | MRI Body Composition | Sarcopenia and adiposity assessment (SAT, VAT, muscle) on Dixon/MRI | MR | Academic Key |
+| **MRI Sequences** | `liver_segments_mr` | MRI Couinaud Liver Segments | Couinaud segments I through VIII on hepatic MRI sequences | MR | Open |
+| **MRI Sequences** | `liver_lesions_mr` | MRI Focal Liver Lesions | Hepatic focal lesion delineation on MR sequences | MR | Open |
+| **MRI Sequences** | `brain_aneurysm` | MRI Intracranial Aneurysm | Automated intracranial cerebral aneurysm detection on MRA | MR | Open |
+| **MRI Sequences** | `face_mr` | MRI Facial Defacing | HIPAA/GDPR-compliant facial contour removal on head MRI | MR | Academic Key |
 
 ---
 

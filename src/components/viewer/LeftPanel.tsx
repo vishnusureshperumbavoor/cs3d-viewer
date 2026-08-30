@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SeriesThumbnail from "../SeriesThumbnail";
 import { DicomSegData } from "../../services/dicom-seg-service";
 import { totalsegmentatorService } from "../../services/totalsegmentator-service";
@@ -36,10 +36,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   onDeleteSegSeries,
 }) => {
   const [pushingUid, setPushingUid] = useState<string | null>(null);
-  const [pushedUids, setPushedUids] = useState<Record<string, string>>({});
+  const [downloadingUid, setDownloadingUid] = useState<string | null>(null);
   const [hfFiles, setHfFiles] = useState<Array<{ filename: string; url: string }>>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     totalsegmentatorService.getHFSegmentations().then(setHfFiles);
   }, [seriesList.length]);
 
@@ -47,8 +47,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     if (pushingUid) return;
     setPushingUid(segSeriesUid);
     try {
-      const res = await totalsegmentatorService.pushSegToHuggingFace(segSeriesUid);
-      setPushedUids((prev) => ({ ...prev, [segSeriesUid]: res.url }));
+      await totalsegmentatorService.pushSegToHuggingFace(segSeriesUid);
       const updated = await totalsegmentatorService.getHFSegmentations();
       setHfFiles(updated);
     } catch (err: any) {
@@ -56,6 +55,19 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       alert(err.message || "Failed to push segmentation to Hugging Face.");
     } finally {
       setPushingUid(null);
+    }
+  };
+
+  const handleDownloadSeg = async (segSeriesUid: string, segTitle: string) => {
+    if (downloadingUid) return;
+    setDownloadingUid(segSeriesUid);
+    try {
+      await totalsegmentatorService.downloadSegmentation(segSeriesUid, segTitle);
+    } catch (err: any) {
+      console.error("Download failed:", err);
+      alert(err.message || "Failed to download segmentation file.");
+    } finally {
+      setDownloadingUid(null);
     }
   };
   if (!isOpen) {
@@ -189,7 +201,6 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                 );
 
                 const isUploadedToHF = Boolean(
-                  pushedUids[segSeries.seriesUid] ||
                   hfFiles.some((f) => {
                     const fnNorm = (f.filename || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("totalsegmentator", "").replace("dcm", "");
                     const titleNorm = (segTitle || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("totalsegmentator", "");
@@ -204,7 +215,6 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                     );
                   })
                 );
-                const hfUrl = pushedUids[segSeries.seriesUid] || hfFiles[0]?.url || "https://huggingface.co/datasets/vishnusureshperumbavoor/dicom_public_dataset";
 
                 return (
                   <div
@@ -232,37 +242,45 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                         <div className="seg-card-action-btns">
                           {isTotalSeg && (
                             <button
-                              className={`seg-series-hf-btn ${isUploadedToHF ? "pushed" : ""}`}
+                              className="seg-series-download-btn"
+                              disabled={downloadingUid === segSeries.seriesUid}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadSeg(segSeries.seriesUid, segTitle);
+                              }}
+                              title={`Download ${segTitle} DICOM (.dcm)`}
+                              aria-label={`Download ${segTitle} DICOM`}
+                            >
+                              {downloadingUid === segSeries.seriesUid ? (
+                                <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
+                              ) : (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                  <polyline points="7 10 12 15 17 10" />
+                                  <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                              )}
+                            </button>
+                          )}
+                          {isTotalSeg && !isUploadedToHF && (
+                            <button
+                              className="seg-series-upload-btn"
                               disabled={pushingUid === segSeries.seriesUid}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (isUploadedToHF) {
-                                  window.open(hfUrl, "_blank");
-                                } else {
-                                  handlePushToHF(segSeries.seriesUid);
-                                }
+                                handlePushToHF(segSeries.seriesUid);
                               }}
-                              title={
-                                isUploadedToHF
-                                  ? `View ${segTitle} on Hugging Face (already uploaded)`
-                                  : `Push ${segTitle} to Hugging Face dataset`
-                              }
-                              aria-label={
-                                isUploadedToHF
-                                  ? `View ${segTitle} on Hugging Face`
-                                  : `Push ${segTitle} to Hugging Face`
-                              }
+                              title={`Upload ${segTitle} to Hugging Face dataset`}
+                              aria-label={`Upload ${segTitle} to Hugging Face dataset`}
                             >
                               {pushingUid === segSeries.seriesUid ? (
                                 <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
-                              ) : isUploadedToHF ? (
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                                  <polyline points="15 3 21 3 21 9" />
-                                  <line x1="10" y1="14" x2="21" y2="3" />
-                                </svg>
                               ) : (
-                                <span style={{ fontSize: "0.85rem" }}>🤗</span>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                  <polyline points="17 8 12 3 7 8" />
+                                  <line x1="12" y1="3" x2="12" y2="15" />
+                                </svg>
                               )}
                             </button>
                           )}
