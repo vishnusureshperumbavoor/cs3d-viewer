@@ -487,8 +487,59 @@
 .totalseg-scan-context-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.totalseg-scan-context-left {
+  display: flex;
+  align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+/* ── Top Icon Filter Buttons ── */
+.totalseg-top-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.totalseg-icon-filter-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.totalseg-icon-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.totalseg-icon-filter-btn.active {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.totalseg-icon-filter-btn.active.completed {
+  background: rgba(52, 211, 153, 0.22);
+  border-color: #34d399;
+  color: #34d399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
 }
 
 .totalseg-scan-badge {
@@ -1386,6 +1437,96 @@
 .totalseg-footer-hint {
   color: #64748b;
   font-style: italic;
+}
+
+/* ── Filter Bar & Checkmark Chips ── */
+.totalseg-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.totalseg-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.72rem;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.totalseg-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.totalseg-filter-chip.active {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+
+.totalseg-filter-chip input[type="checkbox"] {
+  accent-color: #38bdf8;
+  cursor: pointer;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+
+.totalseg-empty-filter-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 28px 16px;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.totalseg-empty-filter-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.totalseg-empty-filter-desc {
+  font-size: 0.72rem;
+  color: #64748b;
+  max-width: 280px;
+  line-height: 1.35;
+}
+
+.totalseg-clear-filters-btn {
+  margin-top: 4px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.totalseg-clear-filters-btn:hover {
+  background: rgba(56, 189, 248, 0.25);
+  color: #ffffff;
 }
 
 /* ── Contextual Academic License Card (Above Academic Models) ── */

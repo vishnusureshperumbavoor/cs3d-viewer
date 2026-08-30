@@ -54,6 +54,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   onOpenLicenseModal,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [filterCompletedOnly, setFilterCompletedOnly] = useState<boolean>(false);
+  const [filterNoLicenseOnly, setFilterNoLicenseOnly] = useState<boolean>(false);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
   const [installedTasks, setInstalledTasks] = useState<string[]>([]);
   const [pushingTaskId, setPushingTaskId] = useState<string | null>(null);
@@ -114,29 +116,61 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
       const contentLabel = (segData?.contentLabel || "").toUpperCase();
 
       if (contentLabel && contentLabel === expectedContentLabel) return true;
-      if (taskId === "total" && (desc.includes("whole body (totalsegmentator)") || desc.includes("total (totalsegmentator)"))) return true;
+      if (taskId === "total" && (desc.includes("whole body") || desc.includes("total"))) return true;
       if (desc.includes(expectedDesc)) return true;
+      if (desc.includes(taskDisplay)) return true;
       return false;
     });
   };
 
   const recommendedTasks = useMemo(() => {
-    return getRecommendedTasks(selectedSeriesMetadata);
-  }, [selectedSeriesMetadata]);
+    const baseList = getRecommendedTasks(selectedSeriesMetadata);
+    // Any task that has a completed segmentation on this study is automatically recommended!
+    const completedTasks = TOTALSEGMENTATOR_TASKS.filter((t) => Boolean(getCompletedSeg(t.id)));
+
+    const merged = [...completedTasks];
+    baseList.forEach((t) => {
+      if (!merged.some((m) => m.id === t.id)) {
+        merged.push(t);
+      }
+    });
+    return merged;
+  }, [selectedSeriesMetadata, loadedSegs, segDataMap]);
 
   const recommendedIds = useMemo(() => {
     return new Set(recommendedTasks.map((t) => t.id));
   }, [recommendedTasks]);
 
+  const filteredRecommendedTasks = useMemo(() => {
+    let list = recommendedTasks;
+    if (filterNoLicenseOnly) {
+      list = list.filter((t) => !t.requiresLicense);
+    }
+    if (filterCompletedOnly) {
+      list = list.filter((t) => Boolean(getCompletedSeg(t.id)));
+    }
+    return list;
+  }, [recommendedTasks, filterNoLicenseOnly, filterCompletedOnly, loadedSegs]);
+
   const filteredTasks = useMemo(() => {
-    if (selectedCategory === "all") {
-      return TOTALSEGMENTATOR_TASKS;
-    }
+    let list = TOTALSEGMENTATOR_TASKS;
+
     if (selectedCategory === "academic") {
-      return TOTALSEGMENTATOR_TASKS.filter((t) => t.requiresLicense);
+      list = list.filter((t) => t.requiresLicense);
+    } else if (selectedCategory !== "all") {
+      list = list.filter((t) => t.category === selectedCategory);
     }
-    return TOTALSEGMENTATOR_TASKS.filter((t) => t.category === selectedCategory);
-  }, [selectedCategory]);
+
+    if (filterNoLicenseOnly) {
+      list = list.filter((t) => !t.requiresLicense);
+    }
+
+    if (filterCompletedOnly) {
+      list = list.filter((t) => Boolean(getCompletedSeg(t.id)));
+    }
+
+    return list;
+  }, [selectedCategory, filterNoLicenseOnly, filterCompletedOnly, loadedSegs]);
 
   const handleRunTask = (task: TotalSegTask) => {
     if (!selectedSeriesUid || isSegmenting) return;
@@ -161,28 +195,72 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
 
   return (
     <div className="totalseg-tab-view">
-      {/* ── Active Scan Context Info ── */}
+      {/* ── Active Scan Context Info & Top Icon Filters ── */}
       <div className="totalseg-scan-context-card">
         <div className="totalseg-scan-context-header">
-          <span className="totalseg-scan-badge">{modality}</span>
-          <span className="totalseg-scan-bodypart">{bodyPart}</span>
-          <span className="totalseg-scan-contrast">{contrast}</span>
+          <div className="totalseg-scan-context-left">
+            <span className="totalseg-scan-badge">{modality}</span>
+            <span className="totalseg-scan-bodypart">{bodyPart}</span>
+            <span className="totalseg-scan-contrast">{contrast}</span>
+          </div>
+
+          <div className="totalseg-top-filters">
+            {/* Double tick icon for completed */}
+            <button
+              type="button"
+              className={`totalseg-icon-filter-btn completed ${filterCompletedOnly ? "active" : ""}`}
+              onClick={() => {
+                const next = !filterCompletedOnly;
+                setFilterCompletedOnly(next);
+                if (next) setIsSpecializedOpen(true);
+              }}
+              title="show models which completed segmentation"
+              aria-label="show models which completed segmentation"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L7 17l-5-5" />
+                <path d="M22 10l-7.5 7.5-1.5-1.5" />
+              </svg>
+            </button>
+
+            {/* Lock open icon for non academic */}
+            <button
+              type="button"
+              className={`totalseg-icon-filter-btn ${filterNoLicenseOnly ? "active" : ""}`}
+              onClick={() => {
+                const next = !filterNoLicenseOnly;
+                setFilterNoLicenseOnly(next);
+                if (next) {
+                  setIsSpecializedOpen(true);
+                  if (selectedCategory === "academic") setSelectedCategory("all");
+                }
+              }}
+              title="show models that doesnt require academic license"
+              aria-label="show models that doesnt require academic license"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ── Recommended Tasks Section ── */}
-      <div className="totalseg-section">
-        <div className="totalseg-section-header">
-          <div className="totalseg-section-title-group">
-            <span className="totalseg-section-badge">💡 Recommended</span>
-            <span className="totalseg-section-subtitle">
-              Matched for {modality} {bodyPart}
-            </span>
+      {filteredRecommendedTasks.length > 0 && (
+        <div className="totalseg-section">
+          <div className="totalseg-section-header">
+            <div className="totalseg-section-title-group">
+              <span className="totalseg-section-badge">💡 Recommended</span>
+              <span className="totalseg-section-subtitle">
+                Matched for {modality} {bodyPart}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className="totalseg-task-list">
-          {recommendedTasks.map((task) => {
+          <div className="totalseg-task-list">
+            {filteredRecommendedTasks.map((task) => {
             const isThisTaskRunning = isSegmenting && runningTaskId === task.id;
             const completedSeg = getCompletedSeg(task.id);
             const isDownloaded = installedTasks.includes(task.id);
@@ -380,6 +458,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
           })}
         </div>
       </div>
+      )}
 
       {/* ── Specialized Models Catalog ── */}
       <div className={`totalseg-section ${isSpecializedOpen ? "expanded" : "collapsed"}`} style={{ marginTop: "10px" }}>
@@ -459,7 +538,31 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
 
         {/* Task Cards */}
         <div className="totalseg-task-list">
-          {filteredTasks.map((task) => {
+          {filteredTasks.length === 0 ? (
+            <div className="totalseg-empty-filter-state">
+              <span style={{ fontSize: "1.4rem" }}>🔍</span>
+              <span className="totalseg-empty-filter-title">No matching models found</span>
+              <span className="totalseg-empty-filter-desc">
+                {filterCompletedOnly && filterNoLicenseOnly
+                  ? "No completed models found without license requirement in this study."
+                  : filterCompletedOnly
+                  ? "No segmentations have been completed yet for this selection."
+                  : "No models match the selected category and filters."}
+              </span>
+              <button
+                type="button"
+                className="totalseg-clear-filters-btn"
+                onClick={() => {
+                  setSelectedCategory("all");
+                  setFilterCompletedOnly(false);
+                  setFilterNoLicenseOnly(false);
+                }}
+              >
+                Reset All Filters
+              </button>
+            </div>
+          ) : (
+            filteredTasks.map((task) => {
             const isThisTaskRunning = isSegmenting && runningTaskId === task.id;
             const isRecommended = recommendedIds.has(task.id);
             const completedSeg = getCompletedSeg(task.id);
@@ -658,7 +761,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
         </>
       )}

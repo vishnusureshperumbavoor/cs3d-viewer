@@ -716,6 +716,7 @@ export function getRecommendedTasks(metadata?: {
     [
       "total",
       "total_v3",
+      "body",
       "liver_segments",
       "liver_vessels",
       "liver_lesions",
@@ -723,6 +724,7 @@ export function getRecommendedTasks(metadata?: {
       "tissue_types",
       "tissue_4_types",
       "abdominal_muscles",
+      "vertebrae_body",
       "vertebrae_pp",
       "renal_arteries",
       "trunk_cavities",
