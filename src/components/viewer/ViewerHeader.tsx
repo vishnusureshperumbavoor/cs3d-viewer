@@ -108,6 +108,18 @@ export const ViewerHeader: React.FC<ViewerHeaderProps> = ({
 
         {/* Window / Level Presets Toolbar */}
         <WLPresetToolbar />
+
+        {/* Hugging Face Study Dataset Link (Icon Only) */}
+        <a
+          href="https://huggingface.co/datasets/vishnusureshperumbavoor/dicom_public_dataset/tree/main/04-01-2000-abdomenw-15076"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="top-nav-hf-btn"
+          title="Open study dataset on Hugging Face"
+          aria-label="Open study dataset on Hugging Face"
+        >
+          <span style={{ fontSize: "1.2rem" }} role="img" aria-label="Hugging Face">🤗</span>
+        </a>
       </div>
     </nav>
   );
