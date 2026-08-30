@@ -113,14 +113,30 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
     const expectedContentLabel = `TS_${taskId.toUpperCase()}`;
 
     return loadedSegs.find((seg) => {
-      const desc = (seg.seriesDescription || "").toLowerCase();
+      const desc = (seg.seriesDescription || "").trim().toLowerCase();
       const segData = segDataMap?.[seg.seriesUid];
-      const contentLabel = (segData?.contentLabel || "").toUpperCase();
+      const contentLabel = (segData?.contentLabel || "").trim().toUpperCase();
 
+      // 1. Exact DICOM ContentLabel match (e.g. TS_BODY vs TS_VERTEBRAE_BODY)
       if (contentLabel && contentLabel === expectedContentLabel) return true;
-      if (taskId === "total" && (desc.includes("whole body") || desc.includes("total"))) return true;
-      if (desc.includes(expectedDesc)) return true;
-      if (desc.includes(taskDisplay)) return true;
+
+      // 2. Whole body / Total task matching
+      if (taskId === "total") {
+        if (
+          desc.startsWith("whole body") ||
+          desc.startsWith("total (totalsegmentator)") ||
+          desc === "total"
+        ) {
+          return true;
+        }
+      }
+
+      // 3. Exact description match (starts with expectedDesc so "body" never matches "vertebrae body")
+      if (desc === expectedDesc || desc.startsWith(expectedDesc)) return true;
+
+      // 4. Standalone exact task name match (e.g. "liver vessels" without suffix)
+      if (desc === taskDisplay) return true;
+
       return false;
     });
   };
