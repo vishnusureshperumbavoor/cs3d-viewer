@@ -91,6 +91,45 @@ async def delete_segmentation_series(series_uid: str):
         raise HTTPException(status_code=404, detail=f"Series with UID {series_uid} could not be deleted from Orthanc.")
     return {"status": "success", "deletedSeriesUid": series_uid}
 
+@router.get("/download/{series_uid}")
+async def download_segmentation_file(series_uid: str):
+    """Downloads the raw DICOM segmentation (.dcm) file for a series from Orthanc."""
+    from services.orthanc_client import orthanc_client
+    from fastapi.responses import Response
+    import pydicom
+    import io
+
+    series_id = orthanc_client.lookup_series_id(series_uid)
+    if not series_id:
+        raise HTTPException(status_code=404, detail=f"Series {series_uid} not found in Orthanc.")
+
+    instances = orthanc_client.get_series_instances(series_id)
+    if not instances:
+        raise HTTPException(status_code=404, detail=f"No instances found for series {series_uid}.")
+
+    file_bytes = orthanc_client.get_instance_file(instances[0])
+    if not file_bytes:
+        raise HTTPException(status_code=500, detail="Failed to retrieve DICOM data from Orthanc.")
+
+    clean_desc = "TotalSegmentator"
+    try:
+        dcm = pydicom.dcmread(io.BytesIO(file_bytes), stop_before_pixels=True)
+        series_desc = str(getattr(dcm, "SeriesDescription", "TotalSegmentator")).strip()
+        clean_desc = "".join(c for c in series_desc if c.isalnum() or c in ("-", "_", " ")).strip().replace(" ", "_")
+    except Exception as e:
+        print(f"[Segmentation] Error reading DICOM headers: {e}")
+
+    filename = f"{clean_desc}.dcm" if not clean_desc.endswith(".dcm") else clean_desc
+
+    return Response(
+        content=file_bytes,
+        media_type="application/dicom",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+    )
+
 @router.get("/hf-files")
 async def get_hf_segmentations(study_folder: str = None):
     """Lists all TotalSegmentator segmentation files already uploaded to Hugging Face dataset."""

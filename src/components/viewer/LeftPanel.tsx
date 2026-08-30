@@ -36,6 +36,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   onDeleteSegSeries,
 }) => {
   const [pushingUid, setPushingUid] = useState<string | null>(null);
+  const [downloadingUid, setDownloadingUid] = useState<string | null>(null);
   const [hfFiles, setHfFiles] = useState<Array<{ filename: string; url: string }>>([]);
 
   useEffect(() => {
@@ -54,6 +55,19 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       alert(err.message || "Failed to push segmentation to Hugging Face.");
     } finally {
       setPushingUid(null);
+    }
+  };
+
+  const handleDownloadSeg = async (segSeriesUid: string, segTitle: string) => {
+    if (downloadingUid) return;
+    setDownloadingUid(segSeriesUid);
+    try {
+      await totalsegmentatorService.downloadSegmentation(segSeriesUid, segTitle);
+    } catch (err: any) {
+      console.error("Download failed:", err);
+      alert(err.message || "Failed to download segmentation file.");
+    } finally {
+      setDownloadingUid(null);
     }
   };
   if (!isOpen) {
@@ -226,6 +240,28 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                           {parsedSeg?.segments.length || 0} Segments
                         </span>
                         <div className="seg-card-action-btns">
+                          {isTotalSeg && (
+                            <button
+                              className="seg-series-download-btn"
+                              disabled={downloadingUid === segSeries.seriesUid}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadSeg(segSeries.seriesUid, segTitle);
+                              }}
+                              title={`Download ${segTitle} DICOM (.dcm)`}
+                              aria-label={`Download ${segTitle} DICOM`}
+                            >
+                              {downloadingUid === segSeries.seriesUid ? (
+                                <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
+                              ) : (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                  <polyline points="7 10 12 15 17 10" />
+                                  <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                              )}
+                            </button>
+                          )}
                           {isTotalSeg && !isUploadedToHF && (
                             <button
                               className="seg-series-upload-btn"

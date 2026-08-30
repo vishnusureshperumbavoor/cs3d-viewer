@@ -189,6 +189,80 @@ export const totalsegmentatorService = {
     },
 
     /**
+     * Downloads the DICOM SEG (.dcm) file for a series from backend / Orthanc.
+     */
+    downloadSegmentation: async (seriesUid: string, defaultFilename?: string): Promise<void> => {
+        try {
+            // First try FastAPI backend download endpoint
+            const res = await fetch(`http://localhost:8000/api/segment/download/${seriesUid}`);
+            if (res.ok) {
+                const blob = await res.blob();
+                let filename = defaultFilename
+                    ? `${defaultFilename.replace(/[^a-zA-Z0-9_-]/g, "_")}.dcm`
+                    : `segmentation_${seriesUid.slice(-6)}.dcm`;
+
+                const disposition = res.headers.get("content-disposition");
+                if (disposition && disposition.includes("filename=")) {
+                    const match = disposition.match(/filename="?([^";]+)"?/);
+                    if (match && match[1]) {
+                        filename = match[1];
+                    }
+                }
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                return;
+            }
+        } catch (e) {
+            console.warn("Backend download endpoint failed, trying Orthanc fallback:", e);
+        }
+
+        // Fallback: Fetch directly from Orthanc via lookup
+        const authHeaders = {
+            Authorization: "Basic " + btoa("orthanc:orthanc"),
+        };
+        const lookupResp = await fetch("/tools/lookup", {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain",
+                ...authHeaders,
+            },
+            body: seriesUid,
+        });
+        if (!lookupResp.ok) throw new Error("Could not find series in Orthanc.");
+        const results = await lookupResp.json();
+        const seriesItem = Array.isArray(results) ? results.find((r: any) => r.Type === "Series") : null;
+        if (!seriesItem?.ID) throw new Error("Series ID not found.");
+
+        const seriesDetailResp = await fetch(`/series/${seriesItem.ID}`, { headers: authHeaders });
+        const seriesDetail = await seriesDetailResp.json();
+        const instanceId = seriesDetail.Instances?.[0];
+        if (!instanceId) throw new Error("No instances in series.");
+
+        const fileResp = await fetch(`/instances/${instanceId}/file`, { headers: authHeaders });
+        if (!fileResp.ok) throw new Error("Failed to download file from Orthanc.");
+        const blob = await fileResp.blob();
+
+        const filename = defaultFilename
+            ? `${defaultFilename.replace(/[^a-zA-Z0-9_-]/g, "_")}.dcm`
+            : `segmentation_${seriesUid.slice(-6)}.dcm`;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    },
+
+    /**
      * Reads, base64 encodes, and parses a local DICOM SEG file uploaded by the user.
      */
     parseFile: async (file: File): Promise<SegmentationResult> => {
