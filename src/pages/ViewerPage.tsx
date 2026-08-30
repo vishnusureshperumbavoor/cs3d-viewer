@@ -11,6 +11,7 @@ import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS } from "../utils/mpr-utils";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
 import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
+import { TOTALSEGMENTATOR_TASKS, TotalSegTask } from "../constants/totalsegmentator-tasks";
 
 export default function ViewerPage() {
   const { instances, error, refetch } = useStudyImages();
@@ -118,6 +119,48 @@ export default function ViewerPage() {
   }, [segData]);
 
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
+  const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
+  const [pendingLicenseTask, setPendingLicenseTask] = useState<TotalSegTask | null>(null);
+  const [licenseInfo, setLicenseInfo] = useState<{ hasLicense: boolean; licenseMasked?: string | null }>({
+    hasLicense: false,
+    licenseMasked: null,
+  });
+
+  const refreshLicenseStatus = async () => {
+    try {
+      const status = await totalsegmentatorService.getLicenseStatus();
+      setLicenseInfo({
+        hasLicense: status.hasLicense,
+        licenseMasked: status.licenseMasked,
+      });
+    } catch (e) {
+      console.warn("Failed to fetch license status:", e);
+    }
+  };
+
+  useEffect(() => {
+    void refreshLicenseStatus();
+  }, []);
+
+  const handleOpenLicenseModal = (task?: TotalSegTask) => {
+    setPendingLicenseTask(task || null);
+    setIsLicenseModalOpen(true);
+  };
+
+  const handleCloseLicenseModal = () => {
+    setPendingLicenseTask(null);
+    setIsLicenseModalOpen(false);
+  };
+
+  const handleLicenseSuccess = () => {
+    void refreshLicenseStatus();
+    if (pendingLicenseTask && selectedSeriesUid) {
+      const taskToRun = pendingLicenseTask;
+      setPendingLicenseTask(null);
+      setIsLicenseModalOpen(false);
+      void handleRunTotalSegmentator(selectedSeriesUid, taskToRun.id, taskToRun.id === "total");
+    }
+  };
   const [active3DPreset, setActive3DPreset] = useState<string>("CT-AAA");
   const [activeRightSidebarTab, setActiveRightSidebarTab] = useState<"segmentation" | "presets" | "totalsegmentator">("segmentation");
 
@@ -196,6 +239,14 @@ export default function ViewerPage() {
     fast: boolean = true
   ) => {
     if (!seriesUid || segmentingSeriesUid) return;
+
+    const taskDef = TOTALSEGMENTATOR_TASKS.find((t) => t.id === task);
+    if (taskDef?.requiresLicense && !licenseInfo.hasLicense) {
+      setPendingLicenseTask(taskDef);
+      setIsLicenseModalOpen(true);
+      return;
+    }
+
     setSegmentingSeriesUid(seriesUid);
     setSegmentingTaskName(task);
     setSegmentingStatus("running");
@@ -282,6 +333,12 @@ export default function ViewerPage() {
           onDismissSegmentingOverlay={handleDismissSegmentingOverlay}
           totalSegError={totalSegError}
           onDismissTotalSegError={() => setTotalSegError(null)}
+          isLicenseModalOpen={isLicenseModalOpen}
+          onCloseLicenseModal={handleCloseLicenseModal}
+          hasLicense={licenseInfo.hasLicense}
+          licenseMasked={licenseInfo.licenseMasked}
+          pendingLicenseTaskName={pendingLicenseTask?.name}
+          onLicenseUpdated={handleLicenseSuccess}
         />
 
         <RightPanel
@@ -314,6 +371,8 @@ export default function ViewerPage() {
             setActiveSegSeriesUid(segSeriesUid);
           }}
           onDeleteSegSeries={handleDeleteSegSeries}
+          licenseInfo={licenseInfo}
+          onOpenLicenseModal={handleOpenLicenseModal}
         />
       </main>
     </div>

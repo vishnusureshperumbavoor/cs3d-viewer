@@ -23,6 +23,8 @@ type TotalSegmentatorTabProps = {
   onSelectSegSeries?: (imageSeriesUid: string, segSeriesUid: string) => void;
   onDeleteSegSeries?: (segSeriesUid: string) => void;
   onSwitchTab?: (tab: "segmentation" | "presets" | "totalsegmentator") => void;
+  licenseInfo?: { hasLicense: boolean; licenseMasked?: string | null };
+  onOpenLicenseModal?: (task?: TotalSegTask) => void;
 };
 
 const CATEGORIES = [
@@ -34,6 +36,7 @@ const CATEGORIES = [
   { id: "musculoskeletal", label: "Spine & Bones" },
   { id: "head_neck", label: "Head & Dental" },
   { id: "pathology", label: "Pathology" },
+  { id: "academic", label: "Academic 🔑" },
   { id: "mri", label: "MRI" },
 ];
 
@@ -47,6 +50,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   onSelectSegSeries,
   onDeleteSegSeries,
   onSwitchTab,
+  licenseInfo: propsLicenseInfo,
+  onOpenLicenseModal,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
@@ -55,12 +60,28 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   const [pushedTasks, setPushedTasks] = useState<Record<string, string>>({});
   const [hfFiles, setHfFiles] = useState<Array<{ filename: string; url: string }>>([]);
   const [isSpecializedOpen, setIsSpecializedOpen] = useState<boolean>(false);
+  const [localLicenseInfo, setLocalLicenseInfo] = useState<{ hasLicense: boolean; licenseMasked?: string | null }>({
+    hasLicense: false,
+    licenseMasked: null,
+  });
+
+  const licenseInfo = propsLicenseInfo || localLicenseInfo;
 
   const isSegmenting = Boolean(segmentingSeriesUid);
+
+  const refreshLicenseStatus = () => {
+    totalsegmentatorService.getLicenseStatus().then((status) => {
+      setLocalLicenseInfo({
+        hasLicense: status.hasLicense,
+        licenseMasked: status.licenseMasked,
+      });
+    });
+  };
 
   useEffect(() => {
     totalsegmentatorService.getInstalledTasks().then(setInstalledTasks);
     totalsegmentatorService.getHFSegmentations().then(setHfFiles);
+    refreshLicenseStatus();
   }, [segmentingSeriesUid, loadedSegs.length]);
 
   const handlePushToHF = async (task: TotalSegTask, completedSeg: { seriesUid: string }) => {
@@ -111,11 +132,20 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
     if (selectedCategory === "all") {
       return TOTALSEGMENTATOR_TASKS;
     }
+    if (selectedCategory === "academic") {
+      return TOTALSEGMENTATOR_TASKS.filter((t) => t.requiresLicense);
+    }
     return TOTALSEGMENTATOR_TASKS.filter((t) => t.category === selectedCategory);
   }, [selectedCategory]);
 
   const handleRunTask = (task: TotalSegTask) => {
     if (!selectedSeriesUid || isSegmenting) return;
+
+    if (task.requiresLicense && !licenseInfo.hasLicense) {
+      onOpenLicenseModal?.(task);
+      return;
+    }
+
     setRunningTaskId(task.id);
     const fast = task.id === "total";
     onRunTotalSegmentator?.(selectedSeriesUid, task.id, fast);
@@ -182,7 +212,29 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                         </span>
                       )}
                       {task.requiresLicense && (
-                        <span className="totalseg-license-badge" title="Requires free academic license from totalsegmentator.com">🔑 Academic Key</span>
+                        licenseInfo.hasLicense ? (
+                          <span
+                            className="totalseg-license-badge totalseg-license-clickable"
+                            title="Academic model (Active license verified)"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenLicenseModal?.();
+                            }}
+                          >
+                            🎓 Academic (Unlocked)
+                          </span>
+                        ) : (
+                          <span
+                            className="totalseg-license-badge totalseg-license-clickable"
+                            title="Requires free academic license from totalsegmentator.com (Click to enter key)"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenLicenseModal?.(task);
+                            }}
+                          >
+                            🔑 Academic Key
+                          </span>
+                        )
                       )}
 
                       {task.structures.slice(0, 3).map((s) => (
@@ -375,6 +427,36 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
               ))}
             </div>
 
+            {/* Contextual Academic License Card (Shown when browsing Academic Models) */}
+            {selectedCategory === "academic" && (
+              <div className={`totalseg-academic-context-card ${licenseInfo.hasLicense ? "active" : "unregistered"}`}>
+                <div className="totalseg-academic-context-left">
+                  <span className={`totalseg-license-pill ${licenseInfo.hasLicense ? "active" : "unregistered"}`}>
+                    {licenseInfo.hasLicense ? "License Active" : "Key Required"}
+                  </span>
+                  <div className="totalseg-academic-context-text">
+                    <span className="totalseg-academic-context-title">
+                      {licenseInfo.hasLicense
+                        ? "All specialized academic models unlocked"
+                        : "One free key unlocks all specialized models below"}
+                    </span>
+                    <span className="totalseg-academic-context-subtitle">
+                      {licenseInfo.hasLicense
+                        ? `Registered key: ${licenseInfo.licenseMasked || "••••••••"}`
+                        : "Body composition, coronary arteries, cardiac chambers, limb bones & more."}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="totalseg-license-action-btn"
+                  onClick={() => onOpenLicenseModal?.()}
+                >
+                  {licenseInfo.hasLicense ? "Manage" : "Activate Key"}
+                </button>
+              </div>
+            )}
+
         {/* Task Cards */}
         <div className="totalseg-task-list">
           {filteredTasks.map((task) => {
@@ -408,7 +490,29 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                         </span>
                       )}
                       {task.requiresLicense && (
-                        <span className="totalseg-license-badge" title="Requires free academic license from totalsegmentator.com">🔑 Academic Key</span>
+                        licenseInfo.hasLicense ? (
+                          <span
+                            className="totalseg-license-badge totalseg-license-clickable"
+                            title="Academic model (Active license verified)"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenLicenseModal?.();
+                            }}
+                          >
+                            🎓 Academic (Unlocked)
+                          </span>
+                        ) : (
+                          <span
+                            className="totalseg-license-badge totalseg-license-clickable"
+                            title="Requires free academic license from totalsegmentator.com (Click to enter key)"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenLicenseModal?.(task);
+                            }}
+                          >
+                            🔑 Academic Key
+                          </span>
+                        )
                       )}
                       {!completedSeg && !isRecommended && !task.requiresLicense && !isDownloaded && (
                         <span className="totalseg-task-tag">--task {task.id}</span>
@@ -558,7 +662,7 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
         </div>
         </>
       )}
+      </div>
     </div>
-  </div>
-);
+  );
 };

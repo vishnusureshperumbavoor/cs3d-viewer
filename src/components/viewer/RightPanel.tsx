@@ -69,6 +69,8 @@ type RightPanelProps = {
   segDataMap?: Record<string, DicomSegData>;
   onSelectSegSeries?: (imageSeriesUid: string, segSeriesUid: string) => void;
   onDeleteSegSeries?: (segSeriesUid: string) => void;
+  licenseInfo?: { hasLicense: boolean; licenseMasked?: string | null };
+  onOpenLicenseModal?: (task?: any) => void;
 };
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -93,6 +95,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   segDataMap,
   onSelectSegSeries,
   onDeleteSegSeries,
+  licenseInfo,
+  onOpenLicenseModal,
 }) => {
   const segments = segData?.segments || [];
 
@@ -274,6 +278,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             onSelectSegSeries={onSelectSegSeries}
             onDeleteSegSeries={onDeleteSegSeries}
             onSwitchTab={onChangeTab}
+            licenseInfo={licenseInfo}
+            onOpenLicenseModal={onOpenLicenseModal}
           />
         ) : activeTab === "segmentation" ? (
           <>

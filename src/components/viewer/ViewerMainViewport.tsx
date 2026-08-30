@@ -3,6 +3,7 @@ import CornerstoneViewport from "../CornerstoneViewport";
 import { MPRViewer } from "../viewport/MPRViewer";
 import { DicomSegData } from "../../services/dicom-seg-service";
 import { TotalSegmentatorLoadingOverlay } from "./TotalSegmentatorLoadingOverlay";
+import { TotalSegLicenseModal } from "./TotalSegLicenseModal";
 
 type ViewerMainViewportProps = {
   error: string | null;
@@ -19,6 +20,12 @@ type ViewerMainViewportProps = {
   onDismissSegmentingOverlay?: () => void;
   totalSegError: string | null;
   onDismissTotalSegError: () => void;
+  isLicenseModalOpen?: boolean;
+  onCloseLicenseModal?: () => void;
+  hasLicense?: boolean;
+  licenseMasked?: string | null;
+  pendingLicenseTaskName?: string | null;
+  onLicenseUpdated?: () => void;
 };
 
 export const ViewerMainViewport: React.FC<ViewerMainViewportProps> = ({
@@ -36,9 +43,27 @@ export const ViewerMainViewport: React.FC<ViewerMainViewportProps> = ({
   onDismissSegmentingOverlay,
   totalSegError,
   onDismissTotalSegError,
+  isLicenseModalOpen = false,
+  onCloseLicenseModal,
+  hasLicense = false,
+  licenseMasked,
+  pendingLicenseTaskName,
+  onLicenseUpdated,
 }) => {
   return (
     <section className="viewer-panel" style={{ position: "relative" }}>
+      {/* ── TotalSegmentator Academic License Modal (Centered in Main Viewport) ── */}
+      {isLicenseModalOpen && (
+        <TotalSegLicenseModal
+          isOpen={isLicenseModalOpen}
+          onClose={onCloseLicenseModal || (() => {})}
+          hasLicense={Boolean(hasLicense)}
+          licenseMasked={licenseMasked}
+          targetTaskName={pendingLicenseTaskName}
+          onLicenseUpdated={onLicenseUpdated || (() => {})}
+        />
+      )}
+
       {segmentingSeriesUid && (
         <TotalSegmentatorLoadingOverlay
           taskName={segmentingTaskName}

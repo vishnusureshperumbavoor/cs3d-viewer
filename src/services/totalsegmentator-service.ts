@@ -63,6 +63,53 @@ export const totalsegmentatorService = {
     },
 
     /**
+     * Gets current TotalSegmentator license status.
+     */
+    getLicenseStatus: async (): Promise<{ hasLicense: boolean; licenseMasked?: string; status: string }> => {
+        try {
+            const response = await fetch("http://localhost:8000/api/segment/license");
+            if (!response.ok) return { hasLicense: false, status: "unregistered" };
+            return await response.json();
+        } catch (e) {
+            console.warn("Failed to fetch license status:", e);
+            return { hasLicense: false, status: "unregistered" };
+        }
+    },
+
+    /**
+     * Sets / activates TotalSegmentator academic license key.
+     */
+    setLicense: async (licenseNumber: string, skipValidation: boolean = false): Promise<{ success: boolean; message: string }> => {
+        const response = await fetch("http://localhost:8000/api/segment/license", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ licenseNumber, skipValidation }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || "Failed to set license.");
+        }
+        return data;
+    },
+
+    /**
+     * Removes the active TotalSegmentator license key.
+     */
+    removeLicense: async (): Promise<boolean> => {
+        try {
+            const response = await fetch("http://localhost:8000/api/segment/license", {
+                method: "DELETE",
+            });
+            return response.ok;
+        } catch (e) {
+            console.error("Failed to remove license:", e);
+            return false;
+        }
+    },
+
+    /**
      * Deletes a generated segmentation series from Orthanc backend.
      */
     deleteSegSeries: async (seriesUid: string): Promise<boolean> => {
