@@ -1,4 +1,5 @@
 import { parseSeg, extractSegmentationInfo } from "../utils/parse-dicom";
+import { API_ENDPOINTS } from "../config/api";
 
 export interface SegmentationResult {
     parsedLabelmaps: any[];
@@ -19,7 +20,7 @@ export const totalsegmentatorService = {
         fast: boolean = true,
         signal?: AbortSignal
     ): Promise<{ instanceId: string; seriesInstanceUid: string }> => {
-        const response = await fetch("http://localhost:8000/api/segment/total", {
+        const response = await fetch(API_ENDPOINTS.SEGMENT.TOTAL, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -54,7 +55,7 @@ export const totalsegmentatorService = {
      */
     cancel: async (seriesInstanceUid: string): Promise<boolean> => {
         try {
-            const response = await fetch("http://localhost:8000/api/segment/cancel", {
+            const response = await fetch(API_ENDPOINTS.SEGMENT.CANCEL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -75,7 +76,7 @@ export const totalsegmentatorService = {
      */
     getInstalledTasks: async (): Promise<string[]> => {
         try {
-            const response = await fetch("http://localhost:8000/api/segment/installed-models");
+            const response = await fetch(API_ENDPOINTS.SEGMENT.INSTALLED_MODELS);
             if (!response.ok) return [];
             const data = await response.json();
             return data.installedTasks || [];
@@ -90,7 +91,7 @@ export const totalsegmentatorService = {
      */
     getLicenseStatus: async (): Promise<{ hasLicense: boolean; licenseMasked?: string; status: string }> => {
         try {
-            const response = await fetch("http://localhost:8000/api/segment/license");
+            const response = await fetch(API_ENDPOINTS.SEGMENT.LICENSE);
             if (!response.ok) return { hasLicense: false, status: "unregistered" };
             return await response.json();
         } catch (e) {
@@ -103,7 +104,7 @@ export const totalsegmentatorService = {
      * Sets / activates TotalSegmentator academic license key.
      */
     setLicense: async (licenseNumber: string, skipValidation: boolean = false): Promise<{ success: boolean; message: string }> => {
-        const response = await fetch("http://localhost:8000/api/segment/license", {
+        const response = await fetch(API_ENDPOINTS.SEGMENT.LICENSE, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -122,7 +123,7 @@ export const totalsegmentatorService = {
      */
     removeLicense: async (): Promise<boolean> => {
         try {
-            const response = await fetch("http://localhost:8000/api/segment/license", {
+            const response = await fetch(API_ENDPOINTS.SEGMENT.LICENSE, {
                 method: "DELETE",
             });
             return response.ok;
@@ -137,7 +138,7 @@ export const totalsegmentatorService = {
      */
     deleteSegSeries: async (seriesUid: string): Promise<boolean> => {
         try {
-            const response = await fetch(`http://localhost:8000/api/segment/series/${encodeURIComponent(seriesUid)}`, {
+            const response = await fetch(API_ENDPOINTS.SEGMENT.SERIES(seriesUid), {
                 method: "DELETE",
             });
             return response.ok;
@@ -151,7 +152,7 @@ export const totalsegmentatorService = {
      * Pushes a generated segmentation series to Hugging Face dataset repo.
      */
     pushSegToHuggingFace: async (seriesUid: string, studyFolder?: string): Promise<{ status: string; url: string; filename: string }> => {
-        const response = await fetch("http://localhost:8000/api/segment/push-hf", {
+        const response = await fetch(API_ENDPOINTS.SEGMENT.PUSH_HF, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -175,9 +176,7 @@ export const totalsegmentatorService = {
      */
     getHFSegmentations: async (studyFolder?: string): Promise<Array<{ filename: string; path: string; url: string }>> => {
         try {
-            const url = studyFolder
-                ? `http://localhost:8000/api/segment/hf-files?study_folder=${encodeURIComponent(studyFolder)}`
-                : "http://localhost:8000/api/segment/hf-files";
+            const url = API_ENDPOINTS.SEGMENT.HF_FILES(studyFolder);
             const response = await fetch(url);
             if (!response.ok) return [];
             const data = await response.json();
@@ -194,7 +193,7 @@ export const totalsegmentatorService = {
     downloadSegmentation: async (seriesUid: string, defaultFilename?: string): Promise<void> => {
         try {
             // First try FastAPI backend download endpoint
-            const res = await fetch(`http://localhost:8000/api/segment/download/${seriesUid}`);
+            const res = await fetch(API_ENDPOINTS.SEGMENT.DOWNLOAD(seriesUid));
             if (res.ok) {
                 const blob = await res.blob();
                 let filename = defaultFilename
