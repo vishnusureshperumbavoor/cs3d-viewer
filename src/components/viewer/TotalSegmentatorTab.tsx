@@ -206,9 +206,9 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   const modality = selectedSeriesMetadata?.modality || "CT";
   const bodyPart = selectedSeriesMetadata?.bodyPartExamined || "Abdomen";
   const contrast = selectedSeriesMetadata?.contrastBolusAgent
-    ? "Contrast-Enhanced"
+    ? "Contrast"
     : selectedSeriesMetadata?.seriesDescription?.toLowerCase().includes("arterial")
-      ? "Arterial Contrast"
+      ? "Arterial"
       : "Non-Contrast";
 
   return (
@@ -264,13 +264,15 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
           </div>
         </div>
       </div>
-
-      {/* ── Recommended Tasks Section ── */}
-      {filteredRecommendedTasks.length > 0 && (
+         {/* ── Recommended Tasks Section ── */}
+      {recommendedTasks.length > 0 && (
         <div className="totalseg-section">
           <div className="totalseg-section-header">
             <div className="totalseg-section-title-group">
               <span className="totalseg-section-badge">💡 Recommended</span>
+              <span className="totalseg-count-badge">
+                {filteredRecommendedTasks.length}
+              </span>
               <span className="totalseg-section-subtitle">
                 Matched for {modality} {bodyPart}
               </span>
@@ -278,201 +280,211 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
           </div>
 
           <div className="totalseg-task-list">
-            {filteredRecommendedTasks.map((task) => {
-              const isThisTaskRunning = isSegmenting && runningTaskId === task.id;
-              const completedSeg = getCompletedSeg(task.id);
-              const isDownloaded = installedTasks.includes(task.id);
-              const isSegActive = Boolean(
-                completedSeg && (
-                  selectedCardTaskId === task.id ||
-                  (activeSegSeriesUid && completedSeg.seriesUid === activeSegSeriesUid)
-                )
-              );
+            {filteredRecommendedTasks.length === 0 ? (
+              <div className="totalseg-empty-filter-state" style={{ padding: "14px 10px" }}>
+                <span style={{ fontSize: "1.1rem" }}>🔍</span>
+                <span className="totalseg-empty-filter-title" style={{ fontSize: "0.75rem" }}>
+                  No matching recommended models
+                </span>
+                <span className="totalseg-empty-filter-desc" style={{ fontSize: "0.68rem" }}>
+                  {filterCompletedOnly
+                    ? "No completed recommended segmentations in this study."
+                    : "No models match the active filter."}
+                </span>
+              </div>
+            ) : (
+              filteredRecommendedTasks.map((task) => {
+                const isThisTaskRunning = isSegmenting && runningTaskId === task.id;
+                const completedSeg = getCompletedSeg(task.id);
+                const isDownloaded = installedTasks.includes(task.id);
+                const isSegActive = Boolean(
+                  completedSeg && (
+                    selectedCardTaskId === task.id ||
+                    (activeSegSeriesUid && completedSeg.seriesUid === activeSegSeriesUid)
+                  )
+                );
 
-              return (
-                <div
-                  key={task.id}
-                  className={`totalseg-task-card recommended ${completedSeg ? "is-completed is-clickable" : ""} ${isSegActive ? "is-active" : ""}`}
-                  onClick={() => {
-                    if (completedSeg && selectedSeriesUid) {
-                      setSelectedCardTaskId(task.id);
-                      onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
-                    }
-                  }}
-                  title={completedSeg ? (isSegActive ? `Currently displaying ${task.name}` : `Click to display ${task.name}`) : undefined}
-                >
-                  {/* Header: Icon on left, Title on Top, Badges & Tags below Title */}
-                  <div className="totalseg-task-header-section">
-                    <div className="totalseg-task-icon-container">
-                      {renderTotalSegIcon(task.id)}
-                    </div>
-                    <div className="totalseg-task-header-content">
-                      {/* Row 1: Full-width Title (Never truncated) */}
-                      <span className="totalseg-task-name">{task.name}</span>
+                return (
+                  <div
+                    key={task.id}
+                    className={`totalseg-task-card recommended ${completedSeg ? "is-completed is-clickable" : ""} ${isSegActive ? "is-active" : ""}`}
+                    onClick={() => {
+                      if (completedSeg && selectedSeriesUid) {
+                        setSelectedCardTaskId(task.id);
+                        onSelectSegSeries?.(selectedSeriesUid, completedSeg.seriesUid);
+                      }
+                    }}
+                    style={{ cursor: completedSeg ? "pointer" : "default" }}
+                  >
+                    {/* Header: Icon on left, Title on Top, Badges & Tags below Title */}
+                    <div className="totalseg-task-header-section">
+                      <div className="totalseg-task-icon-container">
+                        {renderTotalSegIcon(task.id)}
+                      </div>
+                      <div className="totalseg-task-header-content">
+                        {/* Row 1: Full-width Title (Never truncated) */}
+                        <span className="totalseg-task-name">{task.name}</span>
 
-                      {/* Row 2: Badges (Completed, Matched, Downloaded, Academic Key) + Structure Tags */}
-                      <div className="totalseg-badges-and-tags-row">
-                        {completedSeg && (
-                          <span className="totalseg-completed-badge">✓ Completed</span>
-                        )}
-                        {!completedSeg && (
-                          <span className="totalseg-match-badge">Matched</span>
-                        )}
-                        {isDownloaded && (
-                          <span className="totalseg-downloaded-badge" title="Model weights cached locally (~320MB). Instant execution without download.">
-                            ⚡ Downloaded
-                          </span>
-                        )}
-                        {task.requiresLicense && (
-                          licenseInfo.hasLicense ? (
-                            <span
-                              className="totalseg-license-badge totalseg-license-clickable"
-                              title="Academic model (Active license verified)"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenLicenseModal?.();
-                              }}
-                            >
-                              🎓 Academic (Unlocked)
+                        {/* Row 2: Badges (Completed, Matched, Downloaded, Academic Key) + Structure Tags */}
+                        <div className="totalseg-badges-and-tags-row">
+                          {completedSeg && (
+                            <span className="totalseg-completed-badge">✓ Completed</span>
+                          )}
+                          {!completedSeg && (
+                            <span className="totalseg-match-badge">Matched</span>
+                          )}
+                          {isDownloaded && (
+                            <span className="totalseg-downloaded-badge" title="Model weights cached locally (~320MB). Instant execution without download.">
+                              ⚡ Downloaded
                             </span>
-                          ) : (
-                            <span
-                              className="totalseg-license-badge totalseg-license-clickable"
-                              title="Requires free academic license from totalsegmentator.com (Click to enter key)"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenLicenseModal?.(task);
-                              }}
-                            >
-                              🔑 Academic Key
-                            </span>
-                          )
-                        )}
+                          )}
+                          {task.requiresLicense && (
+                            licenseInfo.hasLicense ? (
+                              <span
+                                className="totalseg-license-badge totalseg-license-clickable"
+                                title="Academic model (Active license verified)"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenLicenseModal?.();
+                                }}
+                              >
+                                🎓 Academic (Unlocked)
+                              </span>
+                            ) : (
+                              <span
+                                className="totalseg-license-badge totalseg-license-clickable"
+                                title="Requires free academic license from totalsegmentator.com (Click to enter key)"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenLicenseModal?.(task);
+                                }}
+                              >
+                                🔑 Academic Key
+                              </span>
+                            )
+                          )}
 
-                        {task.structures.slice(0, 3).map((s) => (
-                          <span key={s} className="totalseg-structure-tag">
-                            {s}
-                          </span>
-                        ))}
-                        {task.structures.length > 3 && (
-                          <span className="totalseg-structure-tag more">
-                            +{task.structures.length - 3} more
-                          </span>
-                        )}
+                          {task.structures.slice(0, 3).map((s) => (
+                            <span key={s} className="totalseg-structure-tag">
+                              {s}
+                            </span>
+                          ))}
+                          {task.structures.length > 3 && (
+                            <span className="totalseg-structure-tag more">
+                              +{task.structures.length - 3} more
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Row 3: Full-width description */}
-                  <span className="totalseg-task-desc">{task.description}</span>
+                    {/* Row 3: Full-width description */}
+                    <span className="totalseg-task-desc">{task.description}</span>
 
-                  {/* Footer Actions */}
-                  <div className="totalseg-task-footer">
-                    {completedSeg ? (
-                      <div className="totalseg-completed-action-group">
+                    {/* Footer Actions */}
+                    <div className="totalseg-task-footer">
+                      {completedSeg ? (
+                        <div className="totalseg-completed-action-group">
+                          <button
+                            className="totalseg-rerun-btn"
+                            disabled={isSegmenting}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRunTask(task);
+                            }}
+                            title={`Re-run ${task.name}`}
+                          >
+                            {isThisTaskRunning ? (
+                              <span className="loading-spinner small" />
+                            ) : (
+                              <span>🔄</span>
+                            )}
+                          </button>
+                          {onDeleteSegSeries && (
+                            <button
+                              className="totalseg-delete-btn"
+                              disabled={isSegmenting}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Delete ${task.name} segmentation?`)) {
+                                  onDeleteSegSeries(completedSeg.seriesUid);
+                                }
+                              }}
+                              title={`Delete ${task.name} segmentation`}
+                              aria-label={`Delete ${task.name} segmentation`}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                <line x1="10" y1="11" x2="10" y2="17" />
+                                <line x1="14" y1="11" x2="14" y2="17" />
+                              </svg>
+                            </button>
+                          )}
+                          {(() => {
+                            const isTaskUploadedToHF = Boolean(
+                              pushedTasks[task.id] ||
+                              hfFiles.some((f) => {
+                                const taskClean = task.id.replace(/_/g, "").toLowerCase();
+                                const fnClean = f.filename.replace(/_/g, "").toLowerCase();
+                                return fnClean.includes(taskClean) || taskClean.includes(fnClean.replace(".dcm", ""));
+                              })
+                            );
+
+                            if (isTaskUploadedToHF) return null;
+
+                            return (
+                              <button
+                                className="totalseg-hf-push-btn"
+                                disabled={Boolean(pushingTaskId) || isSegmenting}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (completedSeg) {
+                                    handlePushToHF(task, completedSeg);
+                                  }
+                                }}
+                                title={`Upload ${task.name} segmentation to Hugging Face dataset`}
+                                aria-label={`Upload ${task.name} segmentation to Hugging Face`}
+                              >
+                                {pushingTaskId === task.id ? (
+                                  <span className="loading-spinner small" />
+                                ) : (
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
+                                  </svg>
+                                )}
+                              </button>
+                            );
+                          })()}
+                        </div>
+                      ) : (
                         <button
-                          className="totalseg-rerun-btn"
+                          className="totalseg-run-btn"
                           disabled={isSegmenting || !selectedSeriesUid}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRunTask(task);
-                          }}
-                          title={`Re-run ${task.name}`}
+                          onClick={() => handleRunTask(task)}
+                          title={`Run ${task.name} AI segmentation`}
+                          aria-label={`Run ${task.name} AI segmentation`}
                         >
                           {isThisTaskRunning ? (
                             <span className="loading-spinner small" />
                           ) : (
-                            <span>🔄</span>
+                            <span role="img" aria-label="AI">✨</span>
                           )}
                         </button>
-                        {onDeleteSegSeries && (
-                          <button
-                            className="totalseg-delete-btn"
-                            disabled={isSegmenting}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(`Delete ${task.name} segmentation?`)) {
-                                onDeleteSegSeries(completedSeg.seriesUid);
-                              }
-                            }}
-                            title={`Delete ${task.name} segmentation`}
-                            aria-label={`Delete ${task.name} segmentation`}
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                              <line x1="10" y1="11" x2="10" y2="17" />
-                              <line x1="14" y1="11" x2="14" y2="17" />
-                            </svg>
-                          </button>
-                        )}
-                        {(() => {
-                        const isTaskUploadedToHF = Boolean(
-                          pushedTasks[task.id] ||
-                          hfFiles.some((f) => {
-                            const taskClean = task.id.replace(/_/g, "").toLowerCase();
-                            const fnClean = f.filename.replace(/_/g, "").toLowerCase();
-                            return fnClean.includes(taskClean) || taskClean.includes(fnClean.replace(".dcm", ""));
-                          })
-                        );
-
-                        if (isTaskUploadedToHF) return null;
-
-                        return (
-                          <button
-                            className="totalseg-hf-push-btn"
-                            disabled={Boolean(pushingTaskId) || isSegmenting}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (completedSeg) {
-                                handlePushToHF(task, completedSeg);
-                              }
-                            }}
-                            title={`Upload ${task.name} segmentation to Hugging Face dataset`}
-                            aria-label={`Upload ${task.name} segmentation to Hugging Face`}
-                          >
-                            {pushingTaskId === task.id ? (
-                              <span className="loading-spinner small" />
-                            ) : (
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="17 8 12 3 7 8" />
-                                <line x1="12" y1="3" x2="12" y2="15" />
-                              </svg>
-                            )}
-                          </button>
-                        );
-                        })()}
-                      </div>
-                    ) : (
-                      <button
-                        className="totalseg-run-btn"
-                        disabled={isSegmenting || !selectedSeriesUid}
-                        onClick={() => handleRunTask(task)}
-                      >
-                        {isThisTaskRunning ? (
-                          <>
-                            <span className="loading-spinner small" />
-                            <span>Segmenting...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span role="img" aria-label="AI">✨</span>
-                            <span>Run AI</span>
-                          </>
-                        )}
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       )}
 
-      {/* ── Specialized Models Catalog ── */}
-      <div className={`totalseg-section ${isSpecializedOpen ? "expanded" : "collapsed"}`} style={{ marginTop: "10px" }}>
+      {/* ── Other Models Catalog ── */}
+      <div className={`totalseg-section ${isSpecializedOpen ? "expanded" : "collapsed"}`}>
         <button
           type="button"
           className="totalseg-collapsible-header"
@@ -480,8 +492,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
           aria-expanded={isSpecializedOpen}
         >
           <div className="totalseg-section-title-group">
-            <span className="seg-section-title" style={{ padding: 0 }}>
-              Other Models
+            <span className="totalseg-section-badge other-models">
+              🔬 Other Models
             </span>
             <span className="totalseg-count-badge">
               {filteredTasks.length}
@@ -748,17 +760,13 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                             className="totalseg-run-btn"
                             disabled={isSegmenting || !selectedSeriesUid}
                             onClick={() => handleRunTask(task)}
+                            title={`Run ${task.name} AI segmentation`}
+                            aria-label={`Run ${task.name} AI segmentation`}
                           >
                             {isThisTaskRunning ? (
-                              <>
-                                <span className="loading-spinner small" />
-                                <span>Segmenting...</span>
-                              </>
+                              <span className="loading-spinner small" />
                             ) : (
-                              <>
-                                <span role="img" aria-label="AI">✨</span>
-                                <span>Run AI</span>
-                              </>
+                              <span role="img" aria-label="AI">✨</span>
                             )}
                           </button>
                         )}
