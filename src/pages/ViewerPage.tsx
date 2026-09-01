@@ -7,12 +7,12 @@ import {
   RightPanel,
 } from "../components";
 import { resetMPRCameras } from "../components/viewport/MPRViewer";
-import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS } from "../utils/mpr-utils";
+import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS, jumpToWorldCoordinate, jumpTo2DSegmentSlice } from "../utils/mpr-utils";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
 import { monaiService } from "../services/monai-service";
 import { notifyTelegramSegmentationComplete } from "../services/telegram-service";
-import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
+import { dicomSegService, DicomSegData, SegmentStructure } from "../services/dicom-seg-service";
 import { TOTALSEGMENTATOR_TASKS, TotalSegTask } from "../constants/totalsegmentator-tasks";
 
 export default function ViewerPage() {
@@ -71,6 +71,19 @@ export default function ViewerPage() {
   const [isSegPanelOpen, setIsSegPanelOpen] = useState(true);
   const [segmentOpacity, setSegmentOpacity] = useState(0.5);
   const [segVisibility, setSegVisibility] = useState<Record<number, boolean>>({});
+  const [selectedSegmentNumber, setSelectedSegmentNumber] = useState<number | null>(null);
+
+  const handleNavigateToSegment = (seg: SegmentStructure) => {
+    setSelectedSegmentNumber(seg.segmentNumber);
+    if (segVisibility[seg.segmentNumber] === false) {
+      setSegVisibility((prev) => ({ ...prev, [seg.segmentNumber]: true }));
+    }
+    if (seg.centroid) {
+      jumpToWorldCoordinate(seg.centroid, seg.referencedSopUid, activeImageIds);
+    } else if (seg.referencedSopUid) {
+      jumpTo2DSegmentSlice(seg.referencedSopUid, undefined, activeImageIds);
+    }
+  };
 
   useEffect(() => {
     if (segInstances.length === 0) return;
@@ -481,6 +494,8 @@ export default function ViewerPage() {
           licenseInfo={licenseInfo}
           onOpenLicenseModal={handleOpenLicenseModal}
           activeSegSeriesUid={activeSegSeriesUid}
+          onNavigateToSegment={handleNavigateToSegment}
+          selectedSegmentNumber={selectedSegmentNumber}
         />
       </main>
     </div>

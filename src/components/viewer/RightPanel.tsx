@@ -74,6 +74,8 @@ type RightPanelProps = {
   licenseInfo?: { hasLicense: boolean; licenseMasked?: string | null };
   onOpenLicenseModal?: (task?: any) => void;
   activeSegSeriesUid?: string | null;
+  onNavigateToSegment?: (segment: SegmentStructure) => void;
+  selectedSegmentNumber?: number | null;
 };
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -102,6 +104,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   licenseInfo,
   onOpenLicenseModal,
   activeSegSeriesUid,
+  onNavigateToSegment,
+  selectedSegmentNumber,
 }) => {
   const segments = segData?.segments || [];
 
@@ -433,14 +437,18 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   {segments.map((seg: SegmentStructure) => {
                     const isVisible =
                       segmentVisibility[seg.segmentNumber] ?? true;
+                    const isSelected = selectedSegmentNumber === seg.segmentNumber;
 
                     return (
                       <div
                         key={seg.segmentNumber}
-                        className={`seg-item-card ${isVisible ? "active" : "hidden"}`}
-                        onClick={() =>
-                          onToggleSegmentVisibility(seg.segmentNumber)
-                        }
+                        className={`seg-item-card ${isVisible ? "active" : "hidden"} ${isSelected ? "selected-focus" : ""}`}
+                        onClick={() => {
+                          if (onNavigateToSegment) {
+                            onNavigateToSegment(seg);
+                          }
+                        }}
+                        title={`Click to navigate/focus on ${seg.description || seg.label}`}
                       >
                         <div className="seg-item-left">
                           <span

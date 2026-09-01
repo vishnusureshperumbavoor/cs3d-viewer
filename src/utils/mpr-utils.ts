@@ -1,4 +1,4 @@
-import { getRenderingEngine, Enums as CoreEnums } from "@cornerstonejs/core";
+import { getRenderingEngine, Enums as CoreEnums, metaData } from "@cornerstonejs/core";
 import vtkColorTransferFunction from "@kitware/vtk.js/Rendering/Core/ColorTransferFunction.js";
 import vtkPiecewiseFunction from "@kitware/vtk.js/Common/DataModel/PiecewiseFunction.js";
 
@@ -116,3 +116,99 @@ export function apply3DVolumePreset(vp3D: any, presetId: string, volumeId?: stri
     console.warn("Failed to apply 3D volume preset:", e);
   }
 }
+
+/**
+ * Navigates the 2D Axial Stack Viewport (CT_AXIAL_STACK) to a specific slice
+ * either by referenced SOP Instance UID or by world Z coordinate.
+ */
+export function jumpTo2DSegmentSlice(targetSopUid?: string, targetZ?: number, imageIds?: string[]) {
+  try {
+    const engine = getRenderingEngine("mainViewerRenderingEngine");
+    if (!engine) return;
+    const viewport = engine.getViewport("CT_AXIAL_STACK") as any;
+    if (!viewport || typeof viewport.setImageIdIndex !== "function") return;
+
+    const stackImageIds: string[] = imageIds || (typeof viewport.getImageIds === "function" ? viewport.getImageIds() : []);
+    if (!stackImageIds || stackImageIds.length === 0) return;
+
+    let targetIndex = -1;
+
+    // 1. Exact match by referenced SOP Instance UID
+    if (targetSopUid) {
+      targetIndex = stackImageIds.findIndex((id: string) => id.includes(targetSopUid));
+    }
+
+    // 2. Spatial proximity match by Z coordinate
+    if (targetIndex === -1 && targetZ !== undefined && Number.isFinite(targetZ)) {
+      let minDiff = Infinity;
+      stackImageIds.forEach((id: string, idx: number) => {
+        const imagePlane = metaData.get("imagePlaneModule", id);
+        if (imagePlane?.imagePositionPatient) {
+          const z = Number(imagePlane.imagePositionPatient[2]);
+          const diff = Math.abs(z - targetZ);
+          if (diff < minDiff) {
+            minDiff = diff;
+            targetIndex = idx;
+          }
+        }
+      });
+    }
+
+    if (targetIndex >= 0 && targetIndex < stackImageIds.length) {
+      viewport.setImageIdIndex(targetIndex);
+      viewport.render();
+    }
+  } catch (e) {
+    console.warn("Failed to jump 2D stack viewport to slice:", e);
+  }
+}
+
+/**
+ * Navigates all 3 orthographic MPR viewports (Axial, Sagittal, Coronal) and 2D Stack Viewport to center on a 3D world coordinate.
+ */
+export function jumpToWorldCoordinate(worldCoord: [number, number, number], targetSopUid?: string, imageIds?: string[]) {
+  // 1. Jump 2D Viewport if available
+  jumpTo2DSegmentSlice(targetSopUid, worldCoord[2], imageIds);
+
+  // 2. Jump 3D MPR Viewports
+  try {
+    const engine = getRenderingEngine(RENDERING_ENGINE_ID);
+    if (!engine) return;
+
+    MPR_VIEWPORT_IDS.forEach((id) => {
+      const vp = engine.getViewport(id) as any;
+      if (!vp) return;
+
+      const camera = vp.getCamera();
+      if (!camera.focalPoint || !camera.position) return;
+
+      const normal = camera.viewPlaneNormal;
+      const distance = Math.sqrt(
+        Math.pow(camera.position[0] - camera.focalPoint[0], 2) +
+        Math.pow(camera.position[1] - camera.focalPoint[1], 2) +
+        Math.pow(camera.position[2] - camera.focalPoint[2], 2)
+      );
+
+      const newFocalPoint: [number, number, number] = [
+        worldCoord[0],
+        worldCoord[1],
+        worldCoord[2],
+      ];
+
+      const newPosition: [number, number, number] = [
+        newFocalPoint[0] + normal[0] * distance,
+        newFocalPoint[1] + normal[1] * distance,
+        newFocalPoint[2] + normal[2] * distance,
+      ];
+
+      vp.setCamera({
+        focalPoint: newFocalPoint,
+        position: newPosition,
+      });
+      vp.render();
+    });
+  } catch (e) {
+    console.warn("Failed to jump to world coordinate:", e);
+  }
+}
+
