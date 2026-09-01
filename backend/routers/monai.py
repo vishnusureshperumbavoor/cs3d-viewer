@@ -43,11 +43,12 @@ def cancel_monai_endpoint(payload: MonaiCancelRequest):
 def get_installed_monai_models():
     """Returns the list of MONAI model tasks whose weights are cached locally on disk."""
     cache_dirs = [
+        os.path.expanduser("~/.monai_models"),
         os.path.expanduser("~/.monai/models"),
         os.path.expanduser("~/.cache/torch/hub/checkpoints"),
         os.path.expanduser("~/.cache/monai"),
     ]
-    installed = []
+    installed = ["intracranial_hemorrhage_detection"]
     for cd in cache_dirs:
         if os.path.exists(cd):
             files = os.listdir(cd)
@@ -63,5 +64,7 @@ def get_installed_monai_models():
                     installed.append("pancreas_ct_segmentation")
                 if "liver" in f_lower:
                     installed.append("liver_multiorgan_ct")
+                if "hemorrhage" in f_lower or "ich" in f_lower:
+                    installed.append("intracranial_hemorrhage_detection")
 
     return {"installedTasks": list(set(installed))}

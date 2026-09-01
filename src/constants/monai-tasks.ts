@@ -133,6 +133,24 @@ export const MONAI_TASKS: MonaiTask[] = [
     modelType: "Multi-Region",
   },
   {
+    id: "intracranial_hemorrhage_detection",
+    name: "Intracranial Hemorrhage (ICH)",
+    category: "neuro_mri",
+    categoryLabel: "Brain & Head CT",
+    description:
+      "Deep learning segmentation and subtyping of acute intracranial hemorrhages (IPH, SDH, EDH, SAH, IVH) on Non-Contrast Head CT using RSNA & CQ500 composite blood-window models.",
+    structures: [
+      "Intraparenchymal Hemorrhage (IPH)",
+      "Subdural Hematoma (SDH)",
+      "Epidural Hematoma (EDH)",
+      "Subarachnoid Hemorrhage (SAH)",
+      "Intraventricular Hemorrhage (IVH)",
+    ],
+    bodyParts: ["BRAIN", "HEAD", "CRANIUM", "SKULL", "NECK"],
+    modality: "CT",
+    modelType: "Detection + Seg",
+  },
+  {
     id: "prostate_mri",
     name: "Prostate PZ & TZ (MRI)",
     category: "neuro_mri",

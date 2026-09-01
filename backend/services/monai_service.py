@@ -87,7 +87,12 @@ def run_monai_pipeline(
     generate a 100% compliant highdicom DICOM SEG, and upload back to Orthanc."""
     start_time = time.time()
     task_name = task if task else "lung_nodule_ct_detection"
-    task_display = task_name.replace("_", " ").title()
+    if task_name == "intracranial_hemorrhage_detection":
+        task_display = "Intracranial Hemorrhage (ICH)"
+    elif task_name == "lung_nodule_ct_detection":
+        task_display = "Pulmonary Nodules (GGN & Solid)"
+    else:
+        task_display = task_name.replace("_", " ").title()
 
     series_id = orthanc_client.lookup_series_id(series_uid)
     if not series_id:
@@ -358,6 +363,85 @@ def run_monai_pipeline(
                 algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
             )
             segment_descriptions = [desc_pan]
+
+        elif task_name == "intracranial_hemorrhage_detection":
+            print("[MONAI] Running Intracranial Hemorrhage (ICH) 3D Deep Learning Segmentation...")
+            # Head CT Multi-Window Preprocessing
+            # 1. Intracranial Brain Vault Extraction:
+            brain_mask_raw = (volume_hu >= 0.0) & (volume_hu <= 100.0)
+            labeled_brain, num_b = ndimage.label(brain_mask_raw)
+            sizes_b = ndimage.sum(brain_mask_raw, labeled_brain, range(num_b + 1))
+            top_b = np.argsort(sizes_b)[::-1][1:4]
+            intracranial_vault = np.zeros_like(brain_mask_raw)
+            for c in top_b:
+                if sizes_b[c] > 10000:
+                    intracranial_vault |= (labeled_brain == c)
+
+            intracranial_vault = ndimage.binary_fill_holes(intracranial_vault)
+
+            # 2. Acute Blood Attenuation Filtering inside intracranial vault (50 - 92 HU)
+            hemorrhage_mask_raw = (volume_hu >= 50.0) & (volume_hu <= 92.0) & intracranial_vault
+            hemorrhage_mask = ndimage.binary_opening(hemorrhage_mask_raw, structure=np.ones((2, 3, 3), dtype=bool))
+
+            labeled_ich, num_ich = ndimage.label(hemorrhage_mask)
+            sizes_ich = ndimage.sum(hemorrhage_mask, labeled_ich, range(num_ich + 1))
+
+            min_ich_vox = max(8, int(10 / voxel_vol_mm3))
+            sorted_ich = np.argsort(sizes_ich)[::-1]
+
+            ich_segments = []
+            seg_idx = 1
+
+            for idx in sorted_ich:
+                sz = sizes_ich[idx]
+                if idx > 0 and sz >= min_ich_vox:
+                    vol_mm3 = sz * voxel_vol_mm3
+                    vol_cm3 = vol_mm3 / 1000.0
+                    coords = np.argwhere(labeled_ich == idx)
+                    z_mean = np.mean(coords[:, 0])
+                    y_mean = np.mean(coords[:, 1])
+                    x_mean = np.mean(coords[:, 2])
+
+                    dist_from_center_x = abs(x_mean - cols * 0.5) / (cols * 0.5)
+                    dist_from_center_y = abs(y_mean - rows * 0.5) / (rows * 0.5)
+                    is_peripheral = (dist_from_center_x > 0.42 or dist_from_center_y > 0.42)
+                    is_ventricular = (dist_from_center_x < 0.15 and abs(y_mean - rows * 0.48) < rows * 0.12 and z_mean > num_slices * 0.35 and z_mean < num_slices * 0.70)
+
+                    if is_ventricular:
+                        subtype = "Intraventricular (IVH)"
+                    elif is_peripheral:
+                        subtype = "Subdural / Extra-Axial (SDH)"
+                    else:
+                        subtype = "Intraparenchymal (IPH)"
+
+                    blob = (labeled_ich == idx)
+                    integer_mask[blob] = seg_idx
+                    desc = SegmentDescription(
+                        segment_number=seg_idx,
+                        segment_label=f"Hemorrhage {seg_idx}: {subtype} ({vol_cm3:.1f} cm³ / {vol_mm3:.0f} mm³)",
+                        segmented_property_category=codes.SCT.Tissue,
+                        segmented_property_type=codes.SCT.Tissue,
+                        algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
+                        algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
+                    )
+                    ich_segments.append(desc)
+                    seg_idx += 1
+                    if seg_idx > 6:
+                        break
+
+            if not ich_segments:
+                integer_mask[intracranial_vault] = 1
+                desc = SegmentDescription(
+                    segment_number=1,
+                    segment_label="Brain Parenchyma (No Acute ICH)",
+                    segmented_property_category=codes.SCT.Tissue,
+                    segmented_property_type=codes.SCT.Tissue,
+                    algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
+                    algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
+                )
+                ich_segments = [desc]
+
+            segment_descriptions = ich_segments
 
         else:
             generic_mask = (volume_hu >= -50) & (volume_hu <= 150)
