@@ -2269,3 +2269,55 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* ─────────────────────────────────────────────────────────
+   ── MONAI Tab & Card Custom Styles ──
+   ───────────────────────────────────────────────────────── */
+.monai-badge {
+  background: rgba(20, 184, 166, 0.16) !important;
+  border-color: rgba(20, 184, 166, 0.4) !important;
+  color: #2dd4bf !important;
+}
+
+.monai-type-badge {
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #c4b5fd;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+.monai-model-count-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.monai-card.recommended {
+  border-left: 3px solid #14b8a6;
+}
+
+.monai-run-btn {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(14, 165, 233, 0.22)) !important;
+  border-color: rgba(20, 184, 166, 0.45) !important;
+  color: #f0fdfa !important;
+}
+
+.monai-run-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.38), rgba(14, 165, 233, 0.38)) !important;
+  border-color: rgba(20, 184, 166, 0.7) !important;
+  box-shadow: 0 0 10px rgba(20, 184, 166, 0.3);
+}
+
+.monai-icon-box {
+  background: rgba(20, 184, 166, 0.12) !important;
+  border-color: rgba(20, 184, 166, 0.3) !important;
+}
+
+

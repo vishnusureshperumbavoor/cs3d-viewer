@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import segmentation_router, dataset_router
+from routers import segmentation_router, dataset_router, monai_router
 
 app = FastAPI(
     title="3D DICOM Viewer AI Backend",
@@ -20,6 +20,7 @@ app.add_middleware(
 # Mount modular routers under /api
 app.include_router(segmentation_router, prefix="/api")
 app.include_router(dataset_router, prefix="/api")
+app.include_router(monai_router, prefix="/api")
 
 @app.get("/health")
 def health_check():

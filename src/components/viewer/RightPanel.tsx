@@ -2,6 +2,7 @@ import React from "react";
 import { DicomSegData, SegmentStructure } from "../../services/dicom-seg-service";
 import { renderPresetIcon } from "./PresetIcons";
 import { TotalSegmentatorTab } from "./TotalSegmentatorTab";
+import { MonaiTab } from "./MonaiTab";
 
 export const VOLUME_PRESETS = [
   {
@@ -50,8 +51,8 @@ type RightPanelProps = {
   onToggleSegmentVisibility: (segNum: number) => void;
   opacity: number;
   onChangeOpacity: (val: number) => void;
-  activeTab?: "segmentation" | "presets" | "totalsegmentator";
-  onChangeTab?: (tab: "segmentation" | "presets" | "totalsegmentator") => void;
+  activeTab?: "segmentation" | "presets" | "totalsegmentator" | "monai";
+  onChangeTab?: (tab: "segmentation" | "presets" | "totalsegmentator" | "monai") => void;
   active3DPreset?: string;
   onSelect3DPreset?: (presetId: string) => void;
   onResetCameras?: () => void;
@@ -65,6 +66,7 @@ type RightPanelProps = {
   };
   segmentingSeriesUid?: string | null;
   onRunTotalSegmentator?: (seriesUid: string, task?: string, fast?: boolean) => void;
+  onRunMonai?: (seriesUid: string, task: string, scoreThreshold?: number) => void;
   loadedSegs?: Array<{ seriesUid: string; seriesDescription: string; modality: string }>;
   segDataMap?: Record<string, DicomSegData>;
   onSelectSegSeries?: (imageSeriesUid: string, segSeriesUid: string) => void;
@@ -92,6 +94,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   selectedSeriesMetadata,
   segmentingSeriesUid,
   onRunTotalSegmentator,
+  onRunMonai,
   loadedSegs,
   segDataMap,
   onSelectSegSeries,
@@ -114,7 +117,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     });
   };
 
-  const handleTabClick = (tab: "segmentation" | "presets" | "totalsegmentator") => {
+  const handleTabClick = (tab: "segmentation" | "presets" | "totalsegmentator" | "monai") => {
     onChangeTab?.(tab);
     if (!isOpen) {
       onToggle();
@@ -180,7 +183,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             </svg>
           </button>
 
-          {/* 3. totalSegmentor Icon (Last) */}
+          {/* 3. totalSegmentor Icon */}
           <button
             className={`seg-collapsed-icon-btn ${activeTab === "totalsegmentator" ? "active" : ""}`}
             onClick={() => handleTabClick("totalsegmentator")}
@@ -188,6 +191,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             aria-label="totalSegmentor"
           >
             <span style={{ fontSize: "1.15rem" }}>🧠</span>
+          </button>
+
+          {/* 4. MONAI AI Icon */}
+          <button
+            className={`seg-collapsed-icon-btn ${activeTab === "monai" ? "active" : ""}`}
+            onClick={() => handleTabClick("monai")}
+            title="MONAI AI Models"
+            aria-label="MONAI AI Models"
+          >
+            <span style={{ fontSize: "1.15rem" }}>🔬</span>
           </button>
         </div>
       </aside>
@@ -220,7 +233,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             </svg>
           </button>
 
-          {/* Tab Navigation: Segments, 3D presets, totalSegmentor (Icon-only) */}
+          {/* Tab Navigation: Segments, 3D presets, totalSegmentor, MONAI (Icon-only) */}
           <div className="seg-tab-buttons">
             {/* 1. Segments */}
             <button
@@ -255,7 +268,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               </svg>
             </button>
 
-            {/* 3. totalSegmentor (Last) */}
+            {/* 3. totalSegmentor */}
             <button
               className={`seg-tab-btn ${activeTab === "totalsegmentator" ? "active" : ""}`}
               onClick={() => handleTabClick("totalsegmentator")}
@@ -264,12 +277,34 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             >
               <span style={{ fontSize: "1.15rem" }}>🧠</span>
             </button>
+
+            {/* 4. MONAI AI */}
+            <button
+              className={`seg-tab-btn ${activeTab === "monai" ? "active" : ""}`}
+              onClick={() => handleTabClick("monai")}
+              title="MONAI AI Models"
+              aria-label="MONAI AI Models"
+            >
+              <span style={{ fontSize: "1.15rem" }}>🔬</span>
+            </button>
           </div>
         </div>
       </div>
 
       <div className="seg-panel-body">
-        {activeTab === "totalsegmentator" ? (
+        {activeTab === "monai" ? (
+          <MonaiTab
+            selectedSeriesUid={selectedSeriesUid}
+            selectedSeriesMetadata={selectedSeriesMetadata}
+            segmentingSeriesUid={segmentingSeriesUid}
+            onRunMonai={onRunMonai}
+            loadedSegs={loadedSegs}
+            segDataMap={segDataMap}
+            onSelectSegSeries={onSelectSegSeries}
+            onDeleteSegSeries={onDeleteSegSeries}
+            activeSegSeriesUid={activeSegSeriesUid}
+          />
+        ) : activeTab === "totalsegmentator" ? (
           <TotalSegmentatorTab
             selectedSeriesUid={selectedSeriesUid}
             selectedSeriesMetadata={selectedSeriesMetadata}

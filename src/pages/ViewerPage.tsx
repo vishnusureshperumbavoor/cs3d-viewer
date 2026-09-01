@@ -10,6 +10,7 @@ import { resetMPRCameras } from "../components/viewport/MPRViewer";
 import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS } from "../utils/mpr-utils";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
+import { monaiService } from "../services/monai-service";
 import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
 import { TOTALSEGMENTATOR_TASKS, TotalSegTask } from "../constants/totalsegmentator-tasks";
 
@@ -163,7 +164,9 @@ export default function ViewerPage() {
     }
   };
   const [active3DPreset, setActive3DPreset] = useState<string>("CT-AAA");
-  const [activeRightSidebarTab, setActiveRightSidebarTab] = useState<"segmentation" | "presets" | "totalsegmentator">("segmentation");
+  const [activeRightSidebarTab, setActiveRightSidebarTab] = useState<
+    "segmentation" | "presets" | "totalsegmentator" | "monai"
+  >("segmentation");
 
   useEffect(() => {
     if (viewMode === "3d") {
@@ -279,6 +282,44 @@ export default function ViewerPage() {
     }
   };
 
+  const handleRunMonai = async (
+    seriesUid: string,
+    task: string = "lung_nodule_ct_detection",
+    scoreThreshold: number = 0.20
+  ) => {
+    if (!seriesUid || segmentingSeriesUid) return;
+
+    const abortController = new AbortController();
+    totalSegAbortControllerRef.current = abortController;
+
+    setSegmentingSeriesUid(seriesUid);
+    setSegmentingTaskName(`MONAI: ${task}`);
+    setSegmentingStatus("running");
+    setTotalSegError(null);
+    try {
+      await monaiService.run(
+        patientDetails?.studyInstanceUid || "",
+        seriesUid,
+        task,
+        scoreThreshold,
+        abortController.signal
+      );
+      await refetch();
+      setSegmentingStatus("completed");
+    } catch (err: any) {
+      if (err.name === "AbortError" || abortController.signal.aborted) {
+        console.log("[ViewerPage] MONAI run cancelled by user.");
+      } else {
+        console.error("MONAI run failed:", err);
+        setTotalSegError(err.message || "An unexpected error occurred during MONAI execution.");
+      }
+      setSegmentingSeriesUid(null);
+      setSegmentingTaskName(null);
+    } finally {
+      totalSegAbortControllerRef.current = null;
+    }
+  };
+
   const handleCancelTotalSegmentator = async () => {
     const seriesUid = segmentingSeriesUid;
     if (totalSegAbortControllerRef.current) {
@@ -289,6 +330,7 @@ export default function ViewerPage() {
     setSegmentingStatus("running");
     if (seriesUid) {
       void totalsegmentatorService.cancel(seriesUid);
+      void monaiService.cancel(seriesUid);
     }
   };
 
@@ -389,6 +431,7 @@ export default function ViewerPage() {
           selectedSeriesMetadata={selectedSeriesMetadata}
           segmentingSeriesUid={segmentingSeriesUid}
           onRunTotalSegmentator={handleRunTotalSegmentator}
+          onRunMonai={handleRunMonai}
           loadedSegs={seriesList.filter((s) => s.modality === "SEG")}
           segDataMap={segDataMap}
           onSelectSegSeries={(imageSeriesUid, segSeriesUid) => {

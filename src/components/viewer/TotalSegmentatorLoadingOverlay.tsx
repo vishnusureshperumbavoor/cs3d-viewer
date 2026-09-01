@@ -80,10 +80,11 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
     return `${mins}m ${secs}s`;
   };
 
+  const isMonai = Boolean(taskName && taskName.startsWith("MONAI:"));
   const cleanTaskName = taskName
     ? taskName === "total"
       ? "Whole Body (117 Organs)"
-      : taskName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      : taskName.replace(/^MONAI:\s*/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
     : "Whole Body (117 Organs)";
 
   const isCompleted = status === "completed";
@@ -101,7 +102,7 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
           )}
           <div className={`totalseg-scanner-icon ${isCompleted ? "icon-completed" : ""}`}>
             <span style={{ fontSize: isCompleted ? "2.2rem" : "2rem" }} role="img" aria-label="AI Brain">
-              {isCompleted ? "✅" : "🧠"}
+              {isCompleted ? "✅" : isMonai ? "🔬" : "🧠"}
             </span>
           </div>
         </div>
@@ -110,7 +111,11 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
         <div className="totalseg-overlay-header">
           <div className="totalseg-overlay-title-row">
             <h3 className="totalseg-overlay-title">
-              {isCompleted ? "Segmentation Complete" : "TotalSegmentator AI"}
+              {isCompleted
+                ? "Segmentation Complete"
+                : isMonai
+                  ? "MONAI Deep Learning"
+                  : "TotalSegmentator AI"}
             </h3>
             <span className={`totalseg-live-badge ${isCompleted ? "badge-completed" : ""}`}>
               {!isCompleted && <span className="totalseg-live-dot" />}
@@ -150,12 +155,16 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
               <span className="totalseg-status-headline">
                 {isCompleted
                   ? "DICOM Segmentation Generated"
-                  : "Neural Network Inference in Progress"}
+                  : isMonai
+                    ? "MONAI Neural Network Inference in Progress"
+                    : "Neural Network Inference in Progress"}
               </span>
               <span className="totalseg-status-description">
                 {isCompleted
                   ? "Multi-structure DICOM SEG volume is ready and loaded in the viewer."
-                  : "Running TotalSegmentator AI segmentation on server. Please wait while processing..."}
+                  : isMonai
+                    ? "Running MONAI deep learning pipeline on server. Please wait while processing..."
+                    : "Running TotalSegmentator AI segmentation on server. Please wait while processing..."}
               </span>
             </div>
           </div>
