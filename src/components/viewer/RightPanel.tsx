@@ -432,6 +432,35 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   </button>
                 </div>
 
+                {/* Condition-specific negative findings banner */}
+                {segments.length === 1 &&
+                  (segments[0].label.toLowerCase().includes("no acute") ||
+                   (segments[0].description && segments[0].description.toLowerCase().includes("no acute")) ||
+                   segments[0].label.toLowerCase().includes("no finding")) && (
+                    <div
+                      style={{
+                        background: "rgba(16, 185, 129, 0.10)",
+                        border: "1px solid rgba(16, 185, 129, 0.35)",
+                        borderRadius: "10px",
+                        padding: "12px 14px",
+                        marginBottom: "12px",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "10px",
+                      }}
+                    >
+                      <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>🟢</span>
+                      <div>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#34d399" }}>
+                          No Acute Pathology Detected
+                        </div>
+                        <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "3px", lineHeight: 1.4 }}>
+                          The AI model analyzed this series and found no acute lesions matching this condition.
+                        </div>
+                      </div>
+                    </div>
+                )}
+
                 {/* Segments List */}
                 <div className="seg-list">
                   {segments.map((seg: SegmentStructure) => {

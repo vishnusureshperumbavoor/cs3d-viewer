@@ -298,10 +298,10 @@ def run_monai_pipeline(
                         break
 
             if not detected_segments:
-                integer_mask[ggn_candidates] = 1
+                integer_mask[clean_lung] = 1
                 desc = SegmentDescription(
                     segment_number=1,
-                    segment_label="Pulmonary Nodule Region",
+                    segment_label="Lung Parenchyma (No Acute Nodules)",
                     segmented_property_category=codes.SCT.Tissue,
                     segmented_property_type=codes.SCT.Tissue,
                     algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
