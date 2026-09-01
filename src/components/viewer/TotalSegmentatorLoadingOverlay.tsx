@@ -7,33 +7,6 @@ type TotalSegmentatorLoadingOverlayProps = {
   onCancel?: () => void;
 };
 
-const STAGES = [
-  {
-    id: 1,
-    label: "Ingesting 3D volumetric DICOM slices & geometry",
-    minTime: 0,
-    maxTime: 7,
-  },
-  {
-    id: 2,
-    label: "Loading nnU-Net weights & initializing neural network",
-    minTime: 7,
-    maxTime: 25,
-  },
-  {
-    id: 3,
-    label: "Running 3D deep neural network inference on volumetric CT",
-    minTime: 25,
-    maxTime: 65,
-  },
-  {
-    id: 4,
-    label: "Synthesizing multi-structure label maps & encoding DICOM SEG",
-    minTime: 65,
-    maxTime: 999,
-  },
-];
-
 export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOverlayProps> = ({
   taskName = "total",
   status = "running",
@@ -149,7 +122,7 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
           </div>
         </div>
 
-        {/* Time Readout Section (No Progress Bar) */}
+        {/* Time Readout Section */}
         <div className="totalseg-time-readout-card">
           <span className="totalseg-time-label">
             {isCompleted ? "Total Execution Time" : "Elapsed Processing Time"}
@@ -165,42 +138,32 @@ export const TotalSegmentatorLoadingOverlay: React.FC<TotalSegmentatorLoadingOve
           )}
         </div>
 
-        {/* Multi-Stage Progression Timeline */}
-        <div className="totalseg-stages-timeline">
-          {STAGES.map((stage, idx) => {
-            const stageCompleted = isCompleted || elapsedSeconds >= stage.maxTime;
-            const stageCurrent =
-              !isCompleted &&
-              elapsedSeconds >= stage.minTime &&
-              elapsedSeconds < stage.maxTime;
-
-            return (
-              <div
-                key={stage.id}
-                className={`totalseg-stage-item ${
-                  stageCompleted ? "completed" : stageCurrent ? "active" : "pending"
-                }`}
-              >
-                <div className="totalseg-stage-icon-wrap">
-                  {stageCompleted ? (
-                    <span className="totalseg-stage-check">✓</span>
-                  ) : stageCurrent ? (
-                    <span className="totalseg-stage-spinner" />
-                  ) : (
-                    <span className="totalseg-stage-dot" />
-                  )}
-                  {idx < STAGES.length - 1 && (
-                    <div
-                      className={`totalseg-stage-line ${
-                        stageCompleted ? "completed" : ""
-                      }`}
-                    />
-                  )}
-                </div>
-                <span className="totalseg-stage-label">{stage.label}</span>
-              </div>
-            );
-          })}
+        {/* Realistic Status & Progress Section (Honest indeterminate loading) */}
+        <div className={`totalseg-status-card ${isCompleted ? "completed" : ""}`}>
+          <div className="totalseg-status-indicator">
+            {isCompleted ? (
+              <span className="totalseg-status-completed-check">✓</span>
+            ) : (
+              <span className="totalseg-status-spinner" />
+            )}
+            <div className="totalseg-status-text-wrap">
+              <span className="totalseg-status-headline">
+                {isCompleted
+                  ? "DICOM Segmentation Generated"
+                  : "Neural Network Inference in Progress"}
+              </span>
+              <span className="totalseg-status-description">
+                {isCompleted
+                  ? "Multi-structure DICOM SEG volume is ready and loaded in the viewer."
+                  : "Running TotalSegmentator AI segmentation on server. Please wait while processing..."}
+              </span>
+            </div>
+          </div>
+          {!isCompleted && (
+            <div className="totalseg-indeterminate-bar">
+              <div className="totalseg-indeterminate-fill" />
+            </div>
+          )}
         </div>
 
         {/* Close Button on Modal (Close if completed, Cancel if running) */}
