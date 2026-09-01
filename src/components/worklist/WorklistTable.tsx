@@ -52,9 +52,7 @@ export default function WorklistTable({
               <td style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
                 Hugging Face (113 MB)
               </td>
-              <td>
-                <span className="modality-pill">CT</span>
-              </td>
+              <td>CT</td>
               <td style={{ textAlign: "right", paddingRight: "16px" }}>
                 {isDownloading ? (
                   <div className="download-progress-container" onClick={(e) => e.stopPropagation()}>
@@ -117,6 +115,11 @@ export default function WorklistTable({
           ) : (
             studies.map((study, index) => {
               const studyInstanceUid = getDicomValue(study, "0020000D");
+              const modalitiesInStudy = getDicomValue(study, "00080061");
+              const modality =
+                modalitiesInStudy !== "-"
+                  ? modalitiesInStudy
+                  : getDicomValue(study, "00080060");
 
               return (
                 <tr
@@ -134,9 +137,7 @@ export default function WorklistTable({
                   <td style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {studyInstanceUid}
                   </td>
-                  <td>
-                    <span className="modality-pill">{getDicomValue(study, "00080061")}</span>
-                  </td>
+                  <td>{modality}</td>
                   {(!isImported || isDownloading) && <td></td>}
                 </tr>
               );

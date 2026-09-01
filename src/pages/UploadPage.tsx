@@ -378,9 +378,7 @@ export default function UploadPage() {
                       <td>{study.patientId || "—"}</td>
                       <td>{formatDate(study.studyDate)}</td>
                       <td>{study.studyDescription || "—"}</td>
-                      <td>
-                        <span className="modality-pill">{study.modalities}</span>
-                      </td>
+                      <td>{study.modalities}</td>
                       <td>{study.seriesCount}</td>
                       <td>{study.instanceCount}</td>
                       <td>{renderOrthancBadge(study.studyInstanceUid)}</td>

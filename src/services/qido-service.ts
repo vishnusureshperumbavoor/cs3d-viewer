@@ -4,11 +4,11 @@ export const DEFAULT_QIDO_BASE = "/dicom-web";
 
 const formatPersonName = (value: unknown): string => {
   if (!value) {
-    return "-";
+    return "";
   }
 
   if (typeof value === "string") {
-    return value || "-";
+    return value;
   }
 
   if (typeof value === "object") {
@@ -17,10 +17,48 @@ const formatPersonName = (value: unknown): string => {
       Ideographic?: string;
       Phonetic?: string;
     };
-    return pn.Alphabetic || pn.Ideographic || pn.Phonetic || "-";
+    return pn.Alphabetic || pn.Ideographic || pn.Phonetic || "";
   }
 
   return String(value);
+};
+
+const formatSingleValue = (val: unknown, vr?: string): string => {
+  if (val === null || val === undefined) {
+    return "";
+  }
+
+  if (
+    vr === "PN" ||
+    (typeof val === "object" &&
+      val !== null &&
+      ("Alphabetic" in val || "Ideographic" in val || "Phonetic" in val))
+  ) {
+    return formatPersonName(val);
+  }
+
+  if (Array.isArray(val)) {
+    return val
+      .map((v) => formatSingleValue(v, vr))
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  if (typeof val === "object") {
+    return JSON.stringify(val);
+  }
+
+  const str = String(val).trim();
+  // Handle DICOM backslash-separated multi-value strings
+  if (str.includes("\\")) {
+    return str
+      .split("\\")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return str;
 };
 
 export const getDicomValue = (study: QidoStudy, tag: string): string => {
@@ -31,21 +69,17 @@ export const getDicomValue = (study: QidoStudy, tag: string): string => {
     return "-";
   }
 
-  const firstValue = values[0];
+  const formattedValues = values
+    .map((v) => formatSingleValue(v, element?.vr))
+    .filter((s) => s.length > 0);
 
-  if (element?.vr === "PN") {
-    return formatPersonName(firstValue);
+  if (formattedValues.length === 0) {
+    return "-";
   }
 
-  if (Array.isArray(firstValue)) {
-    return firstValue.join(", ") || "-";
-  }
-
-  if (typeof firstValue === "object" && firstValue !== null) {
-    return JSON.stringify(firstValue);
-  }
-
-  return String(firstValue);
+  // Deduplicate entries (e.g. if multiple CT series exist) while preserving order
+  const uniqueValues = Array.from(new Set(formattedValues));
+  return uniqueValues.join(", ");
 };
 
 export const fetchStudies = async (
