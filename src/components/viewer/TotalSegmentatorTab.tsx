@@ -57,9 +57,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
   const [selectedCardTaskId, setSelectedCardTaskId] = useState<string | null>(null);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
   const [installedTasks, setInstalledTasks] = useState<string[]>([]);
-  const [pushingTaskId, setPushingTaskId] = useState<string | null>(null);
-  const [pushedTasks, setPushedTasks] = useState<Record<string, string>>({});
-  const [hfFiles, setHfFiles] = useState<Array<{ filename: string; url: string }>>([]);
 
   const [localLicenseInfo, setLocalLicenseInfo] = useState<{
     hasLicense: boolean;
@@ -106,25 +103,8 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
 
   useEffect(() => {
     totalsegmentatorService.getInstalledTasks().then(setInstalledTasks);
-    totalsegmentatorService.getHFSegmentations().then(setHfFiles);
     refreshLicenseStatus();
   }, [segmentingSeriesUid, loadedSegs.length]);
-
-  const handlePushToHF = async (task: TotalSegTask, completedSeg: LoadedSegItem) => {
-    if (pushingTaskId) return;
-    setPushingTaskId(task.id);
-    try {
-      const res = await totalsegmentatorService.pushSegToHuggingFace(completedSeg.seriesUid);
-      setPushedTasks((prev) => ({ ...prev, [task.id]: res.url }));
-      const updated = await totalsegmentatorService.getHFSegmentations();
-      setHfFiles(updated);
-    } catch (err: any) {
-      console.error("Push to HF failed:", err);
-      alert(err.message || "Failed to push segmentation to Hugging Face.");
-    } finally {
-      setPushingTaskId(null);
-    }
-  };
 
   const handleRunTask = (task: TotalSegTask) => {
     if (!selectedSeriesUid || isSegmenting) return;
@@ -137,17 +117,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
     setRunningTaskId(task.id);
     const fast = task.id === "total";
     onRunTotalSegmentator?.(selectedSeriesUid, task.id, fast);
-  };
-
-  const isTaskUploadedToHF = (task: TotalSegTask) => {
-    return Boolean(
-      pushedTasks[task.id] ||
-        hfFiles.some((f) => {
-          const taskClean = task.id.replace(/_/g, "").toLowerCase();
-          const fnClean = f.filename.replace(/_/g, "").toLowerCase();
-          return fnClean.includes(taskClean) || taskClean.includes(fnClean.replace(".dcm", ""));
-        })
-    );
   };
 
   const modality = selectedSeriesMetadata?.modality || "CT";
@@ -254,9 +223,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                   onRunTask={handleRunTask}
                   onDeleteSegSeries={onDeleteSegSeries}
                   onOpenLicenseModal={onOpenLicenseModal}
-                  isPushingHF={pushingTaskId === task.id}
-                  isPushedHF={isTaskUploadedToHF(task)}
-                  onPushToHF={handlePushToHF}
                 />
               );
             })
@@ -334,9 +300,6 @@ export const TotalSegmentatorTab: React.FC<TotalSegmentatorTabProps> = ({
                     onRunTask={handleRunTask}
                     onDeleteSegSeries={onDeleteSegSeries}
                     onOpenLicenseModal={onOpenLicenseModal}
-                    isPushingHF={pushingTaskId === task.id}
-                    isPushedHF={isTaskUploadedToHF(task)}
-                    onPushToHF={handlePushToHF}
                   />
                 );
               })

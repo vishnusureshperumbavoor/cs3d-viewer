@@ -19,9 +19,6 @@ export interface TotalSegTaskCardProps {
   onRunTask: (task: TotalSegTask) => void;
   onDeleteSegSeries?: (segSeriesUid: string) => void;
   onOpenLicenseModal?: (task?: TotalSegTask) => void;
-  isPushingHF?: boolean;
-  isPushedHF?: boolean;
-  onPushToHF?: (task: TotalSegTask, completedSeg: LoadedSegItem) => void;
 }
 
 export const TotalSegTaskCard: React.FC<TotalSegTaskCardProps> = ({
@@ -40,9 +37,6 @@ export const TotalSegTaskCard: React.FC<TotalSegTaskCardProps> = ({
   onRunTask,
   onDeleteSegSeries,
   onOpenLicenseModal,
-  isPushingHF = false,
-  isPushedHF = false,
-  onPushToHF,
 }) => {
   const renderedStructures = getRenderedStructures(
     task,
@@ -201,30 +195,6 @@ export const TotalSegTaskCard: React.FC<TotalSegTaskCardProps> = ({
                   <line x1="10" y1="11" x2="10" y2="17" />
                   <line x1="14" y1="11" x2="14" y2="17" />
                 </svg>
-              </button>
-            )}
-
-            {/* Hugging Face Push Button */}
-            {!isPushedHF && onPushToHF && (
-              <button
-                className="totalseg-hf-push-btn"
-                disabled={isPushingHF || isSegmenting}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPushToHF(task, completedSeg);
-                }}
-                title={`Upload ${task.name} segmentation to Hugging Face dataset`}
-                aria-label={`Upload ${task.name} segmentation to Hugging Face`}
-              >
-                {isPushingHF ? (
-                  <span className="loading-spinner small" />
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                )}
               </button>
             )}
           </div>
