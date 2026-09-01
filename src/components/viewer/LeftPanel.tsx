@@ -172,12 +172,25 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   parsedSeg?.seriesDescription ||
                   "Segmentation";
 
-                const isTotalSeg = Boolean(
-                  segSeries.seriesDescription?.toLowerCase().includes("totalsegmentator") ||
-                  parsedSeg?.seriesDescription?.toLowerCase().includes("totalsegmentator") ||
-                  parsedSeg?.contentLabel?.toUpperCase().startsWith("TS_") ||
-                  parsedSeg?.contentDescription?.toLowerCase().includes("totalsegmentator")
+                const manufacturer = (parsedSeg?.manufacturer || "").toLowerCase();
+                const contentLabel = (parsedSeg?.contentLabel || "").toLowerCase();
+                const seriesDescLower = (segSeries.seriesDescription || "").toLowerCase();
+
+                const isMonai = Boolean(
+                  manufacturer.includes("monai") ||
+                  contentLabel.startsWith("monai_") ||
+                  seriesDescLower.startsWith("monai:")
                 );
+
+                const isTotalSeg = Boolean(
+                  manufacturer.includes("totalsegmentator") ||
+                  contentLabel.startsWith("ts_") ||
+                  seriesDescLower.includes("totalsegmentator") ||
+                  (!isMonai && !manufacturer)
+                );
+
+                const segIcon = isMonai ? "🔬" : isTotalSeg ? "🧠" : "🧬";
+                const segBadgeLabel = isMonai ? "MONAI" : isTotalSeg ? "TotalSeg" : (segSeries.modality || "SEG");
 
                 return (
                   <div
@@ -187,11 +200,11 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                     title={segTitle}
                   >
                     <div className="series-thumbnail-container seg-thumb-container">
-                      <span style={{ fontSize: "1.5rem" }} role="img" aria-label="Segmentation">
-                        🧬
+                      <span style={{ fontSize: "1.5rem" }} role="img" aria-label={isMonai ? "MONAI AI" : "TotalSegmentator AI"}>
+                        {segIcon}
                       </span>
-                      <div className="thumbnail-modality-badge">
-                        {segSeries.modality || "SEG"}
+                      <div className={`thumbnail-modality-badge ${isMonai ? "monai-seg-badge" : isTotalSeg ? "totalseg-seg-badge" : ""}`}>
+                        {segBadgeLabel}
                       </div>
                     </div>
                     <div className="series-info">
@@ -203,29 +216,27 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                           {parsedSeg?.segments.length || 0} Segments
                         </span>
                         <div className="seg-card-action-btns">
-                          {isTotalSeg && (
-                            <button
-                              className="seg-series-download-btn"
-                              disabled={downloadingUid === segSeries.seriesUid}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownloadSeg(segSeries.seriesUid, segTitle);
-                              }}
-                              title={`Download ${segTitle} DICOM (.dcm)`}
-                              aria-label={`Download ${segTitle} DICOM`}
-                            >
-                              {downloadingUid === segSeries.seriesUid ? (
-                                <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
-                              ) : (
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                  <polyline points="7 10 12 15 17 10" />
-                                  <line x1="12" y1="15" x2="12" y2="3" />
-                                </svg>
-                              )}
-                            </button>
-                          )}
-                          {onDeleteSegSeries && isTotalSeg && (
+                          <button
+                            className="seg-series-download-btn"
+                            disabled={downloadingUid === segSeries.seriesUid}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadSeg(segSeries.seriesUid, segTitle);
+                            }}
+                            title={`Download ${segTitle} DICOM (.dcm)`}
+                            aria-label={`Download ${segTitle} DICOM`}
+                          >
+                            {downloadingUid === segSeries.seriesUid ? (
+                              <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
+                            ) : (
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                              </svg>
+                            )}
+                          </button>
+                          {onDeleteSegSeries && (
                             <button
                               className="seg-series-delete-btn"
                               onClick={(e) => {

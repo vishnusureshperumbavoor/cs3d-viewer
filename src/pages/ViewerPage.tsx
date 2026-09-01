@@ -83,15 +83,22 @@ export default function ViewerPage() {
         segInstances.map(async (inst) => {
           try {
             const data = await dicomSegService.loadStudySegmentation(inst);
-            if (!isCancelled) {
+            if (!isCancelled && data) {
               setSegDataMap((prev) => ({
                 ...prev,
                 [inst.seriesInstanceUid]: data,
               }));
               setActiveSegSeriesUid((prev) => prev || inst.seriesInstanceUid);
             }
-          } catch (err) {
-            console.warn("Failed to load segmentation series:", inst.seriesInstanceUid, err);
+          } catch (err: any) {
+            if (!isCancelled) {
+              setSegDataMap((prev) => {
+                const next = { ...prev };
+                delete next[inst.seriesInstanceUid];
+                return next;
+              });
+              console.log("[ViewerPage] Segmentation series skipped (deleted or invalid):", inst.seriesInstanceUid);
+            }
           }
         })
       );
@@ -371,10 +378,15 @@ export default function ViewerPage() {
   const handleDeleteSegSeries = async (segSeriesUid: string) => {
     if (!segSeriesUid) return;
     try {
-      await totalsegmentatorService.deleteSegSeries(segSeriesUid);
+      setSegDataMap((prev) => {
+        const next = { ...prev };
+        delete next[segSeriesUid];
+        return next;
+      });
       if (activeSegSeriesUid === segSeriesUid) {
         setActiveSegSeriesUid(null);
       }
+      await totalsegmentatorService.deleteSegSeries(segSeriesUid);
       await refetch();
     } catch (err) {
       console.error("Failed to delete segmentation series:", err);

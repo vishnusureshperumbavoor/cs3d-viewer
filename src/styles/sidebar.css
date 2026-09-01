@@ -157,6 +157,18 @@
   letter-spacing: 0.05em;
 }
 
+.thumbnail-modality-badge.monai-seg-badge {
+  background: rgba(13, 148, 136, 0.85);
+  color: #ffffff;
+  border-top: 1px solid rgba(45, 212, 191, 0.4);
+}
+
+.thumbnail-modality-badge.totalseg-seg-badge {
+  background: rgba(79, 70, 229, 0.85);
+  color: #ffffff;
+  border-top: 1px solid rgba(165, 180, 252, 0.4);
+}
+
 .series-thumbnail-container.seg-thumb-container {
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 255, 255, 0.1);

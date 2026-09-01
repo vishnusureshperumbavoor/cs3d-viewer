@@ -172,8 +172,8 @@ export const dicomSegService = {
       }
     }
 
-    if (!fileBuffer) {
-      throw new Error("Unable to fetch DICOM SEG file from Orthanc.");
+    if (!fileBuffer || fileBuffer.byteLength < 132) {
+      throw new Error("Unable to fetch valid DICOM SEG file from Orthanc (file may have been deleted or empty).");
     }
 
     // 2. Parse DICOM SEG with dcmjs
