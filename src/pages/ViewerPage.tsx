@@ -11,6 +11,7 @@ import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS } from "../utils/mpr-utils";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
 import { monaiService } from "../services/monai-service";
+import { notifyTelegramSegmentationComplete } from "../services/telegram-service";
 import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
 import { TOTALSEGMENTATOR_TASKS, TotalSegTask } from "../constants/totalsegmentator-tasks";
 
@@ -259,7 +260,7 @@ export default function ViewerPage() {
     setSegmentingStatus("running");
     setTotalSegError(null);
     try {
-      await totalsegmentatorService.run(
+      const res: any = await totalsegmentatorService.run(
         patientDetails?.studyInstanceUid || "",
         seriesUid,
         task,
@@ -267,7 +268,20 @@ export default function ViewerPage() {
         abortController.signal
       );
       await refetch();
+      if (res?.seriesInstanceUid) {
+        setActiveSegSeriesUid(res.seriesInstanceUid);
+      }
       setSegmentingStatus("completed");
+      void notifyTelegramSegmentationComplete({
+        pipeline: res?.pipeline || "TotalSegmentator AI",
+        taskName: res?.taskDisplay || task,
+        patientName: res?.patientName || patientDetails?.patientName || "Anonymous",
+        seriesDescription: res?.seriesDescription || selectedSeriesMetadata?.seriesDescription || "CT Series",
+        startTimeIst: res?.startTimeIst,
+        completedTimeIst: res?.completedTimeIst,
+        duration: res?.duration,
+        segmentsCount: res?.segmentsCount,
+      });
     } catch (err: any) {
       if (err.name === "AbortError" || abortController.signal.aborted) {
         console.log("[ViewerPage] TotalSegmentator run cancelled by user.");
@@ -297,7 +311,7 @@ export default function ViewerPage() {
     setSegmentingStatus("running");
     setTotalSegError(null);
     try {
-      await monaiService.run(
+      const res: any = await monaiService.run(
         patientDetails?.studyInstanceUid || "",
         seriesUid,
         task,
@@ -305,7 +319,20 @@ export default function ViewerPage() {
         abortController.signal
       );
       await refetch();
+      if (res?.seriesInstanceUid) {
+        setActiveSegSeriesUid(res.seriesInstanceUid);
+      }
       setSegmentingStatus("completed");
+      void notifyTelegramSegmentationComplete({
+        pipeline: res?.pipeline || "MONAI AI",
+        taskName: res?.taskDisplay || task.replace(/_/g, " ").toUpperCase(),
+        patientName: res?.patientName || patientDetails?.patientName || "Anonymous",
+        seriesDescription: res?.seriesDescription || selectedSeriesMetadata?.seriesDescription || "CT Series",
+        startTimeIst: res?.startTimeIst,
+        completedTimeIst: res?.completedTimeIst,
+        duration: res?.duration,
+        segmentsCount: res?.segmentsCount,
+      });
     } catch (err: any) {
       if (err.name === "AbortError" || abortController.signal.aborted) {
         console.log("[ViewerPage] MONAI run cancelled by user.");

@@ -43,11 +43,8 @@ export const monaiService = {
       throw new Error(errText);
     }
 
-    const data: MonaiRunResponse = await response.json();
-    return {
-      instanceId: data.instanceId,
-      seriesInstanceUid: data.seriesInstanceUid,
-    };
+    const data = await response.json();
+    return data;
   },
 
   /**

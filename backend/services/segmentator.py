@@ -7,7 +7,7 @@ import subprocess
 import signal
 from fastapi import HTTPException
 from services.orthanc_client import orthanc_client
-from services.telegram_notifier import send_telegram_message
+from services.telegram_notifier import send_telegram_message, get_ist_time_str
 
 # Active process tracking for cancellation support
 active_segmentation_processes = {}
@@ -90,10 +90,12 @@ def run_segmentation_pipeline(series_uid: str, task: str = "total", fast: bool =
             print(f"[TotalSegmentator] Warning extracting slice metadata: {meta_err}")
 
         # Send rich Telegram notification with CT dataset details
+        start_time_ist = get_ist_time_str()
         send_telegram_message(
             f"⏳ *TotalSegmentator AI Started*\n"
             f"━━━━━━━━━━━━━━━━━━\n"
             f"• *Task*: `{task_display}`\n"
+            f"• *Start Time (IST)*: `{start_time_ist}`\n"
             f"• *Patient*: `{patient_name}` (`{patient_id}`)\n"
             f"• *Study*: `{study_desc}`\n"
             f"• *Series*: `{series_desc}`\n"
@@ -201,24 +203,19 @@ def run_segmentation_pipeline(series_uid: str, task: str = "total", fast: bool =
         duration_str = f"{int(mins)}m {int(secs)}s" if mins > 0 else f"{secs:.1f}s"
         print(f"[TotalSegmentator] Pipeline complete in {duration_str}! Uploaded SEG Series UID: {seg_series_uid}")
 
-        # Send rich Telegram notification on completion
-        structure_info = f"• *Structures*: `{num_structures} segments generated`\n" if num_structures > 0 else ""
-        send_telegram_message(
-            f"✅ *TotalSegmentator Completed Successfully*\n"
-            f"━━━━━━━━━━━━━━━━━━\n"
-            f"• *Task*: `{task_display}`\n"
-            f"• *Patient*: `{patient_name}`\n"
-            f"• *Series*: `{series_desc}`\n"
-            f"• *Time Taken*: `{duration_str}`\n"
-            f"{structure_info}"
-            f"• *Status*: `DICOM SEG uploaded to Orthanc` 🧠"
-        )
-
         return {
             "status": "success",
             "instanceId": instance_id,
             "seriesInstanceUid": seg_series_uid,
-            "duration": duration_str
+            "duration": duration_str,
+            "task": task,
+            "taskDisplay": task_display,
+            "patientName": patient_name,
+            "seriesDescription": series_desc,
+            "startTimeIst": start_time_ist,
+            "completedTimeIst": get_ist_time_str(),
+            "segmentsCount": num_structures if num_structures > 0 else 1,
+            "pipeline": "TotalSegmentator AI",
         }
 
     finally:
@@ -254,10 +251,12 @@ def cancel_segmentation_pipeline(series_uid: str) -> bool:
     active_segmentation_processes.pop(series_uid, None)
     active_temp_dirs.pop(series_uid, None)
 
+    stop_time_ist = get_ist_time_str()
     send_telegram_message(
         f"⏹️ *TotalSegmentator Cancelled*\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"• *Series*: `{series_uid}`\n"
+        f"• *Stop Time (IST)*: `{stop_time_ist}`\n"
         f"• Inference cancelled by user."
     )
     return True

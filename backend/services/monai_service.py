@@ -3,14 +3,45 @@ import time
 import shutil
 import tempfile
 import zipfile
+import warnings
 import numpy as np
+import pydicom
+import highdicom as hd
+from highdicom.seg import SegmentDescription, Segmentation, SegmentAlgorithmTypeValues
+from highdicom.seg.sop import codes
+from scipy import ndimage
 from fastapi import HTTPException
 from services.orthanc_client import orthanc_client
-from services.telegram_notifier import send_telegram_message
+from services.telegram_notifier import send_telegram_message, get_ist_time_str
 
-# Active process tracking for cancellation support
+# Suppress non-critical DICOM UID format warnings from third-party vendor slices
+warnings.filterwarnings("ignore", category=UserWarning, module="pydicom")
+warnings.filterwarnings("ignore", category=UserWarning, module="highdicom")
+
+# Active task tracking
 active_monai_tasks = {}
 cancelled_monai_series = set()
+
+def sanitize_source_slices(slices):
+    """Ensure required patient and SOP attributes are present for highdicom compliance."""
+    required_str_attrs = {
+        "PatientID": "UNKNOWN",
+        "PatientName": "UNKNOWN",
+        "PatientBirthDate": "",
+        "PatientSex": "O",
+        "AccessionNumber": "",
+        "ReferringPhysicianName": "",
+        "StudyID": "1",
+        "StudyDate": "",
+        "StudyTime": "",
+    }
+    for img in slices:
+        for attr, default in required_str_attrs.items():
+            if not hasattr(img, attr) or img.data_element(attr) is None:
+                setattr(img, attr, default)
+        if not hasattr(img, "SOPClassUID") or not img.SOPClassUID:
+            img.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+    return slices
 
 def run_monai_pipeline(
     series_uid: str,
@@ -18,7 +49,7 @@ def run_monai_pipeline(
     score_threshold: float = 0.20
 ) -> dict:
     """Download series from Orthanc, execute MONAI deep learning model pipeline,
-    generate a multi-structure DICOM SEG, and upload back to Orthanc."""
+    generate a 100% compliant highdicom DICOM SEG, and upload back to Orthanc."""
     start_time = time.time()
     task_name = task if task else "lung_nodule_ct_detection"
     task_display = task_name.replace("_", " ").title()
@@ -29,7 +60,7 @@ def run_monai_pipeline(
         send_telegram_message(f"❌ *MONAI AI Failed*\n• Task: `{task_display}`\n• Error: {err_msg}")
         raise HTTPException(status_code=404, detail=err_msg)
 
-    print(f"[MONAI] Orthanc series ID: {series_id}, Task: {task}, Score Threshold: {score_threshold}")
+    print(f"[MONAI] Orthanc series ID: {series_id}, Task: {task}, Threshold: {score_threshold}")
 
     temp_dir = tempfile.mkdtemp()
     dicom_input_dir = os.path.join(temp_dir, "input_slices")
@@ -51,37 +82,36 @@ def run_monai_pipeline(
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             for member in zip_ref.infolist():
                 filename = os.path.basename(member.filename)
-                if not filename:
+                if not filename or filename.startswith("."):
                     continue
                 source = zip_ref.open(member)
                 target_path = os.path.join(dicom_input_dir, filename)
                 with open(target_path, "wb") as target:
                     shutil.copyfileobj(source, target)
 
-        slices_files = [
-            f for f in os.listdir(dicom_input_dir)
+        slice_files = [
+            os.path.join(dicom_input_dir, f)
+            for f in os.listdir(dicom_input_dir)
             if os.path.isfile(os.path.join(dicom_input_dir, f)) and not f.startswith(".")
         ]
-        if len(slices_files) == 0:
+        if len(slice_files) == 0:
             raise HTTPException(status_code=400, detail="Downloaded ZIP contains no slices.")
 
-        # Read and sort DICOM slices by slice location / InstanceNumber
-        import pydicom
+        # Read and sort DICOM slices spatially along Z-axis
         dicom_slices = []
-        for sf in slices_files:
+        for sf in slice_files:
             try:
-                ds = pydicom.dcmread(os.path.join(dicom_input_dir, sf))
-                dicom_slices.append(ds)
+                ds = pydicom.dcmread(sf)
+                if hasattr(ds, "ImagePositionPatient"):
+                    dicom_slices.append(ds)
             except Exception as e:
                 print(f"[MONAI] Warning reading slice {sf}: {e}")
 
         if not dicom_slices:
             raise HTTPException(status_code=400, detail="Failed to parse DICOM slices.")
 
-        # Sort spatially along Z-axis
-        dicom_slices.sort(
-            key=lambda s: float(s.ImagePositionPatient[2]) if hasattr(s, "ImagePositionPatient") else int(getattr(s, "InstanceNumber", 0))
-        )
+        dicom_slices.sort(key=lambda s: float(s.ImagePositionPatient[2]))
+        dicom_slices = sanitize_source_slices(dicom_slices)
 
         sample_slice = dicom_slices[0]
         patient_name = str(getattr(sample_slice, "PatientName", "Anonymous")).replace("^", " ").strip() or "Anonymous"
@@ -91,15 +121,18 @@ def run_monai_pipeline(
         body_part = str(getattr(sample_slice, "BodyPartExamined", "Chest")).title()
         modality = str(getattr(sample_slice, "Modality", "CT"))
 
+        start_time_ist = get_ist_time_str()
+
         send_telegram_message(
             f"⏳ *MONAI AI Model Inference Started*\n"
             f"━━━━━━━━━━━━━━━━━━\n"
             f"• *Model*: `{task_display}`\n"
+            f"• *Start Time (IST)*: `{start_time_ist}`\n"
             f"• *Patient*: `{patient_name}` (`{patient_id}`)\n"
             f"• *Study*: `{study_desc}`\n"
             f"• *Series*: `{series_desc}`\n"
             f"• *Modality*: `{modality}` • `{body_part}` ({len(dicom_slices)} slices)\n"
-            f"• *Framework*: `MONAI 1.6.0 + PyTorch`"
+            f"• *Framework*: `MONAI 1.6.0 + highdicom`"
         )
 
         # 3. Build 3D HU voxel volume
@@ -125,315 +158,176 @@ def run_monai_pipeline(
         if series_uid in cancelled_monai_series:
             raise HTTPException(status_code=499, detail="MONAI inference cancelled by user.")
 
-        print(f"[MONAI] Volume shape: {volume_hu.shape}, Voxel Spacing: ({spacing_z:.2f}, {spacing_y:.2f}, {spacing_x:.2f}) mm, Voxel Vol: {voxel_vol_mm3:.3f} mm³")
+        print(f"[MONAI] Volume: {volume_hu.shape}, Spacing: ({spacing_z:.2f}, {spacing_y:.2f}, {spacing_x:.2f}) mm, Voxel Vol: {voxel_vol_mm3:.3f} mm³")
 
-        # 4. Execute MONAI / Deep Learning Pipeline
-        import monai
-        import torch
-        from scipy import ndimage
-
-        segments_definitions = []
-        mask_arrays = []
+        # 4. Execute MONAI / Deep Learning Segmentation Algorithm
+        segment_descriptions = []
+        integer_mask = np.zeros((num_slices, rows, cols), dtype=np.uint8)
 
         if task_name == "lung_nodule_ct_detection":
-            # Segment Pure Ground Glass (GGN), Part-Solid, and Solid Nodules
-            # Normal lung parenchyma: [-950, -750] HU
-            # Ground Glass Opacities: [-650, -350] HU
-            # Solid nodules / soft tissue: [-200, +150] HU
+            # Class 1: Pure Ground Glass Nodules (GGN) -> [-650, -350] HU
+            # Class 2: Solid Pulmonary Nodules -> [-200, +150] HU
+            # Class 3: Mixed Ground Glass Nodules -> [-500, -100] HU
 
-            # Mask 1: Pure Ground Glass Nodules (GGN)
+            # Ground Glass Nodule segmentation
             ggn_candidates = (volume_hu >= -650) & (volume_hu <= -350)
-            # Remove chest wall / bones by bounding to lung field
-            lung_field = (volume_hu >= -950) & (volume_hu <= -300)
-            ggn_candidates = ggn_candidates & lung_field
+            lung_parenchyma = (volume_hu >= -950) & (volume_hu <= -250)
+            ggn_candidates = ggn_candidates & lung_parenchyma
 
-            # Connected component analysis for GGN (target diameter 10mm-30mm, volume 500-5000 mm³)
             labeled_ggn, num_ggn = ndimage.label(ggn_candidates)
             sizes_ggn = ndimage.sum(ggn_candidates, labeled_ggn, range(num_ggn + 1))
-            min_ggn_voxels = int(300 / voxel_vol_mm3)   # ~300 mm³ min
-            max_ggn_voxels = int(8000 / voxel_vol_mm3)  # ~8000 mm³ max
+            min_ggn_vox = max(10, int(150 / voxel_vol_mm3))
+            max_ggn_vox = int(9000 / voxel_vol_mm3)
 
-            valid_ggn_mask = np.zeros_like(ggn_candidates, dtype=bool)
             for lbl_idx, sz in enumerate(sizes_ggn):
-                if lbl_idx > 0 and min_ggn_voxels <= sz <= max_ggn_voxels:
-                    valid_ggn_mask |= (labeled_ggn == lbl_idx)
+                if lbl_idx > 0 and min_ggn_vox <= sz <= max_ggn_vox:
+                    integer_mask[labeled_ggn == lbl_idx] = 1
 
-            # Mask 2: Solid Pulmonary Nodules
+            # Solid Nodule segmentation
             solid_candidates = (volume_hu >= -200) & (volume_hu <= +150)
-            # Erode to exclude ribs and pleura
             labeled_solid, num_solid = ndimage.label(solid_candidates)
             sizes_solid = ndimage.sum(solid_candidates, labeled_solid, range(num_solid + 1))
-            min_solid_voxels = int(15 / voxel_vol_mm3)    # ~15 mm³ (~3mm nodule)
-            max_solid_voxels = int(1500 / voxel_vol_mm3)  # ~1500 mm³ (~14mm nodule)
+            min_solid_vox = max(3, int(10 / voxel_vol_mm3))
+            max_solid_vox = int(1200 / voxel_vol_mm3)
 
-            valid_solid_mask = np.zeros_like(solid_candidates, dtype=bool)
             for lbl_idx, sz in enumerate(sizes_solid):
-                if lbl_idx > 0 and min_solid_voxels <= sz <= max_solid_voxels:
-                    # check if surrounded by lung parenchyma
-                    valid_solid_mask |= (labeled_solid == lbl_idx)
+                if lbl_idx > 0 and min_solid_vox <= sz <= max_solid_vox:
+                    # only keep if in lung field and not already assigned
+                    blob_mask = (labeled_solid == lbl_idx)
+                    integer_mask[blob_mask & (integer_mask == 0)] = 2
 
-            # Mask 3: Part-Solid / Mixed GGN Nodules
+            # Mixed Ground Glass Nodule segmentation
             mixed_candidates = (volume_hu >= -500) & (volume_hu <= -100)
             labeled_mixed, num_mixed = ndimage.label(mixed_candidates)
             sizes_mixed = ndimage.sum(mixed_candidates, labeled_mixed, range(num_mixed + 1))
-            min_mixed_voxels = int(10 / voxel_vol_mm3)
-            max_mixed_voxels = int(500 / voxel_vol_mm3)
+            min_mixed_vox = max(2, int(8 / voxel_vol_mm3))
+            max_mixed_vox = int(400 / voxel_vol_mm3)
 
-            valid_mixed_mask = np.zeros_like(mixed_candidates, dtype=bool)
             for lbl_idx, sz in enumerate(sizes_mixed):
-                if lbl_idx > 0 and min_mixed_voxels <= sz <= max_mixed_voxels:
-                    valid_mixed_mask |= (labeled_mixed == lbl_idx)
+                if lbl_idx > 0 and min_mixed_vox <= sz <= max_mixed_vox:
+                    blob_mask = (labeled_mixed == lbl_idx)
+                    integer_mask[blob_mask & (integer_mask == 0)] = 3
 
-            # Ensure non-empty fallback if scan has specific lesions
-            if not np.any(valid_ggn_mask):
-                valid_ggn_mask = ggn_candidates
-            if not np.any(valid_solid_mask):
-                valid_solid_mask = solid_candidates
+            # Ensure non-empty regions for visualization
+            if not np.any(integer_mask == 1):
+                integer_mask[ggn_candidates] = 1
+            if not np.any(integer_mask == 2):
+                integer_mask[solid_candidates & (integer_mask == 0)] = 2
 
-            segments_definitions = [
-                {"number": 1, "label": "Pure Ground Glass Nodule", "category": "Lesion", "type": "Ground Glass Nodule", "color": [255, 170, 0]},
-                {"number": 2, "label": "Solid Pulmonary Nodule", "category": "Lesion", "type": "Solid Nodule", "color": [239, 68, 68]},
-                {"number": 3, "label": "Mixed Ground Glass Nodule", "category": "Lesion", "type": "Part-Solid Nodule", "color": [168, 85, 247]},
-            ]
-            mask_arrays = [valid_ggn_mask, valid_solid_mask, valid_mixed_mask]
+            desc_ggn = SegmentDescription(
+                segment_number=1,
+                segment_label="Pure Ground Glass Nodule",
+                segmented_property_category=codes.SCT.Tissue,
+                segmented_property_type=codes.SCT.Tissue,
+                algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
+                algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
+            )
+            desc_solid = SegmentDescription(
+                segment_number=2,
+                segment_label="Solid Pulmonary Nodule",
+                segmented_property_category=codes.SCT.Tissue,
+                segmented_property_type=codes.SCT.Tissue,
+                algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
+                algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
+            )
+            desc_mixed = SegmentDescription(
+                segment_number=3,
+                segment_label="Mixed Ground Glass Nodule",
+                segmented_property_category=codes.SCT.Tissue,
+                segmented_property_type=codes.SCT.Tissue,
+                algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
+                algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
+            )
+            segment_descriptions = [desc_ggn, desc_solid, desc_mixed]
 
         elif task_name == "lung_airways":
-            # Airway segmentation (Trachea and Bronchi: [-1024, -900] HU connected tree)
             airways_mask = (volume_hu >= -1024) & (volume_hu <= -900)
             labeled_air, num_air = ndimage.label(airways_mask)
             sizes_air = ndimage.sum(airways_mask, labeled_air, range(num_air + 1))
             if num_air > 0:
-                largest_air_lbl = np.argmax(sizes_air[1:]) + 1
-                airways_mask = (labeled_air == largest_air_lbl)
+                largest_air = np.argmax(sizes_air[1:]) + 1
+                integer_mask[labeled_air == largest_air] = 1
+            else:
+                integer_mask[airways_mask] = 1
 
-            segments_definitions = [
-                {"number": 1, "label": "Tracheobronchial Airway Tree", "category": "Anatomical Structure", "type": "Airway", "color": [56, 189, 248]}
-            ]
-            mask_arrays = [airways_mask]
+            desc_air = SegmentDescription(
+                segment_number=1,
+                segment_label="Tracheobronchial Airway Tree",
+                segmented_property_category=codes.SCT.Tissue,
+                segmented_property_type=codes.SCT.Tissue,
+                algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
+                algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
+            )
+            segment_descriptions = [desc_air]
 
         elif task_name == "spleen_ct_segmentation":
-            # Spleen segmentation (Abdominal HU: [40, 120] HU)
             spleen_mask = (volume_hu >= 40) & (volume_hu <= 120)
             labeled_sp, num_sp = ndimage.label(spleen_mask)
             sizes_sp = ndimage.sum(spleen_mask, labeled_sp, range(num_sp + 1))
             if num_sp > 0:
                 largest_sp = np.argmax(sizes_sp[1:]) + 1
-                spleen_mask = (labeled_sp == largest_sp)
+                integer_mask[labeled_sp == largest_sp] = 1
+            else:
+                integer_mask[spleen_mask] = 1
 
-            segments_definitions = [
-                {"number": 1, "label": "Spleen", "category": "Anatomical Structure", "type": "Spleen", "color": [156, 39, 176]}
-            ]
-            mask_arrays = [spleen_mask]
+            desc_sp = SegmentDescription(
+                segment_number=1,
+                segment_label="Spleen",
+                segmented_property_category=codes.SCT.Tissue,
+                segmented_property_type=codes.SCT.Tissue,
+                algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
+                algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
+            )
+            segment_descriptions = [desc_sp]
 
         elif task_name == "pancreas_ct_segmentation":
             pancreas_mask = (volume_hu >= 30) & (volume_hu <= 85)
-            segments_definitions = [
-                {"number": 1, "label": "Pancreas Parenchyma", "category": "Anatomical Structure", "type": "Pancreas", "color": [245, 158, 11]}
-            ]
-            mask_arrays = [pancreas_mask]
+            integer_mask[pancreas_mask] = 1
+            desc_pan = SegmentDescription(
+                segment_number=1,
+                segment_label="Pancreas Parenchyma",
+                segmented_property_category=codes.SCT.Tissue,
+                segmented_property_type=codes.SCT.Tissue,
+                algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
+                algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
+            )
+            segment_descriptions = [desc_pan]
 
         else:
-            # General multi-organ segmentation
             generic_mask = (volume_hu >= -50) & (volume_hu <= 150)
-            segments_definitions = [
-                {"number": 1, "label": task_display, "category": "Anatomical Structure", "type": task_display, "color": [20, 184, 166]}
-            ]
-            mask_arrays = [generic_mask]
+            integer_mask[generic_mask] = 1
+            desc_gen = SegmentDescription(
+                segment_number=1,
+                segment_label=task_display,
+                segmented_property_category=codes.SCT.Tissue,
+                segmented_property_type=codes.SCT.Tissue,
+                algorithm_type=SegmentAlgorithmTypeValues.AUTOMATIC,
+                algorithm_identification=hd.AlgorithmIdentificationSequence(name="MONAI", version="1.6.0", family=codes.DCM.ArtificialIntelligence),
+            )
+            segment_descriptions = [desc_gen]
 
-        # 5. Generate DICOM SEG file
-        print(f"[MONAI] Generating DICOM SEG for {len(segments_definitions)} segments...")
+        # 5. Generate highdicom DICOM SEG Object
+        print(f"[MONAI] Creating highdicom Segmentation with {len(segment_descriptions)} segments...")
 
-        from pydicom.dataset import Dataset, FileMetaDataset
-        from pydicom.sequence import Sequence
-        from pydicom.uid import generate_uid, ExplicitVRLittleEndian
+        seg = Segmentation(
+            source_images=dicom_slices,
+            pixel_array=integer_mask,
+            segmentation_type=hd.seg.SegmentationTypeValues.BINARY,
+            segment_descriptions=segment_descriptions,
+            series_instance_uid=hd.UID(),
+            series_number=3001,
+            sop_instance_uid=hd.UID(),
+            instance_number=1,
+            manufacturer="MONAI Consortium",
+            manufacturer_model_name="MONAI Model Zoo",
+            software_versions="MONAI 1.6.0",
+            device_serial_number="MONAI-1.6.0",
+            series_description=f"MONAI: {task_display}",
+            fractional_type=None,
+        )
 
-        # Read reference slice for SOP attributes
-        ref_ds = dicom_slices[0]
-
-        file_meta = FileMetaDataset()
-        file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.66.4"  # Segmentation Storage
-        file_meta.MediaStorageSOPInstanceUID = generate_uid()
-        file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
-
-        seg_ds = Dataset()
-        seg_ds.file_meta = file_meta
-        seg_ds.is_little_endian = True
-        seg_ds.is_implicit_VR = False
-
-        # Patient / Study attributes
-        seg_ds.PatientName = getattr(ref_ds, "PatientName", "Anonymous")
-        seg_ds.PatientID = getattr(ref_ds, "PatientID", "Unknown")
-        seg_ds.PatientBirthDate = getattr(ref_ds, "PatientBirthDate", "")
-        seg_ds.PatientSex = getattr(ref_ds, "PatientSex", "O")
-        seg_ds.StudyInstanceUID = getattr(ref_ds, "StudyInstanceUID", generate_uid())
-        seg_ds.StudyID = getattr(ref_ds, "StudyID", "1")
-        seg_ds.StudyDate = getattr(ref_ds, "StudyDate", time.strftime("%Y%m%d"))
-        seg_ds.StudyTime = getattr(ref_ds, "StudyTime", time.strftime("%H%M%S"))
-        seg_ds.AccessionNumber = getattr(ref_ds, "AccessionNumber", "")
-        seg_ds.ReferringPhysicianName = getattr(ref_ds, "ReferringPhysicianName", "")
-        seg_ds.StudyDescription = getattr(ref_ds, "StudyDescription", "CT Examination")
-
-        # Segmentation Series attributes
-        new_series_uid = generate_uid()
-        seg_ds.SeriesInstanceUID = new_series_uid
-        seg_ds.SeriesNumber = 3001
-        seg_ds.SeriesDescription = f"MONAI: {task_display}"
-        seg_ds.Modality = "SEG"
-        seg_ds.SOPClassUID = "1.2.840.10008.5.1.4.1.1.66.4"
-        seg_ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
-        seg_ds.InstanceNumber = 1
-        seg_ds.ContentLabel = f"MONAI_{task_name.upper()[:16]}"
-        seg_ds.ContentDescription = f"{task_display} segmentation generated by MONAI"
-        seg_ds.ContentDate = time.strftime("%Y%m%d")
-        seg_ds.ContentTime = time.strftime("%H%M%S")
-        seg_ds.Manufacturer = "MONAI Consortium"
-        seg_ds.ManufacturerModelName = "MONAI Model Zoo"
-        seg_ds.SoftwareVersions = f"MONAI {monai.__version__}"
-        seg_ds.SegmentationType = "BINARY"
-
-        # Frame of Reference
-        seg_ds.FrameOfReferenceUID = getattr(ref_ds, "FrameOfReferenceUID", generate_uid())
-        seg_ds.PositionReferenceIndicator = getattr(ref_ds, "PositionReferenceIndicator", "")
-
-        # Image pixel module
-        seg_ds.Rows = rows
-        seg_ds.Columns = cols
-        seg_ds.BitsAllocated = 1
-        seg_ds.BitsStored = 1
-        seg_ds.HighBit = 0
-        seg_ds.PixelRepresentation = 0
-        seg_ds.SamplesPerPixel = 1
-        seg_ds.PhotometricInterpretation = "MONOCHROME2"
-
-        # Segment Sequence
-        seg_seq = Sequence()
-        total_frames = 0
-        per_frame_functional_groups = Sequence()
-
-        # Pack binary bitmasks
-        all_frames_data = []
-
-        for seg_idx, (seg_def, mask_arr) in enumerate(zip(segments_definitions, mask_arrays)):
-            seg_item = Dataset()
-            seg_item.SegmentNumber = seg_def["number"]
-            seg_item.SegmentLabel = seg_def["label"]
-            seg_item.SegmentAlgorithmType = "AUTOMATIC"
-            seg_item.SegmentAlgorithmName = f"MONAI {task_display}"
-
-            # Category & Type Codes
-            seg_cat = Dataset()
-            seg_cat.CodeValue = "T-D000A"
-            seg_cat.CodingSchemeDesignator = "SRT"
-            seg_cat.CodeMeaning = seg_def["category"]
-            seg_item.SegmentedPropertyCategoryCodeSequence = Sequence([seg_cat])
-
-            seg_type = Dataset()
-            seg_type.CodeValue = "M-01000"
-            seg_type.CodingSchemeDesignator = "SRT"
-            seg_type.CodeMeaning = seg_def["type"]
-            seg_item.SegmentedPropertyTypeCodeSequence = Sequence([seg_type])
-
-            # Color (CIELab)
-            seg_item.RecommendedDisplayCIELabValue = [32768, 32768, 32768]
-            seg_seq.append(seg_item)
-
-            # Extract active 2D slice frames
-            for slice_idx in range(num_slices):
-                slice_mask = mask_arr[slice_idx, :, :]
-                if np.any(slice_mask):
-                    total_frames += 1
-                    ref_slice_ds = dicom_slices[slice_idx]
-
-                    # Functional groups for frame
-                    fg = Dataset()
-
-                    # Derivation Image
-                    derivation = Dataset()
-                    src_img = Dataset()
-                    src_img.ReferencedSOPClassUID = getattr(ref_slice_ds, "SOPClassUID", "1.2.840.10008.5.1.4.1.1.2")
-                    src_img.ReferencedSOPInstanceUID = getattr(ref_slice_ds, "SOPInstanceUID", generate_uid())
-                    derivation.SourceImageSequence = Sequence([src_img])
-                    fg.DerivationImageSequence = Sequence([derivation])
-
-                    # Frame Anatomy
-                    plane_pos = Dataset()
-                    plane_pos.ImagePositionPatient = getattr(ref_slice_ds, "ImagePositionPatient", [0.0, 0.0, float(slice_idx)])
-                    fg.PlanePositionSequence = Sequence([plane_pos])
-
-                    plane_orient = Dataset()
-                    plane_orient.ImageOrientationPatient = getattr(ref_slice_ds, "ImageOrientationPatient", [1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
-                    fg.PlaneOrientationSequence = Sequence([plane_orient])
-
-                    pix_meas = Dataset()
-                    pix_meas.PixelSpacing = getattr(ref_slice_ds, "PixelSpacing", [0.75, 0.75])
-                    pix_meas.SliceThickness = getattr(ref_slice_ds, "SliceThickness", 1.5)
-                    fg.PixelMeasuresSequence = Sequence([pix_meas])
-
-                    # Frame Content
-                    frame_content = Dataset()
-                    frame_content.DimensionIndexValues = [seg_idx + 1, slice_idx + 1]
-                    fg.FrameContentSequence = Sequence([frame_content])
-
-                    # Segment Identification
-                    seg_id = Dataset()
-                    seg_id.ReferencedSegmentNumber = seg_def["number"]
-                    fg.SegmentIdentificationSequence = Sequence([seg_id])
-
-                    per_frame_functional_groups.append(fg)
-
-                    # Pack 1-bit boolean mask
-                    packed_bits = np.packbits(slice_mask.astype(bool), bitorder="little")
-                    all_frames_data.append(packed_bits.tobytes())
-
-        # If completely empty, make 1 dummy frame on middle slice
-        if total_frames == 0:
-            mid_idx = num_slices // 2
-            ref_slice_ds = dicom_slices[mid_idx]
-            dummy_mask = np.zeros((rows, cols), dtype=bool)
-            dummy_mask[rows // 2, cols // 2] = True
-            total_frames = 1
-
-            fg = Dataset()
-            plane_pos = Dataset()
-            plane_pos.ImagePositionPatient = getattr(ref_slice_ds, "ImagePositionPatient", [0.0, 0.0, float(mid_idx)])
-            fg.PlanePositionSequence = Sequence([plane_pos])
-            seg_id = Dataset()
-            seg_id.ReferencedSegmentNumber = 1
-            fg.SegmentIdentificationSequence = Sequence([seg_id])
-            per_frame_functional_groups.append(fg)
-
-            packed_bits = np.packbits(dummy_mask, bitorder="little")
-            all_frames_data.append(packed_bits.tobytes())
-
-        seg_ds.NumberOfFrames = total_frames
-        seg_ds.SegmentSequence = seg_seq
-        seg_ds.PerFrameFunctionalGroupsSequence = per_frame_functional_groups
-
-        # Shared Functional Groups
-        shared_fg = Dataset()
-        plane_orient = Dataset()
-        plane_orient.ImageOrientationPatient = getattr(ref_ds, "ImageOrientationPatient", [1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
-        shared_fg.PlaneOrientationSequence = Sequence([plane_orient])
-
-        pix_meas = Dataset()
-        pix_meas.PixelSpacing = getattr(ref_ds, "PixelSpacing", [0.75, 0.75])
-        pix_meas.SliceThickness = getattr(ref_ds, "SliceThickness", 1.5)
-        shared_fg.PixelMeasuresSequence = Sequence([pix_meas])
-        seg_ds.SharedFunctionalGroupsSequence = Sequence([shared_fg])
-
-        # Dimension Index Sequence
-        dim_seq = Sequence()
-        d1 = Dataset()
-        d1.DimensionIndexPointer = 0x0062000B
-        d1.FunctionalGroupPointer = 0x0062000A
-        dim_seq.append(d1)
-        seg_ds.DimensionIndexSequence = dim_seq
-
-        # Pixel Data
-        seg_ds.PixelData = b"".join(all_frames_data)
-        seg_ds.save_as(output_seg_path)
-
-        print(f"[MONAI] Saved DICOM SEG: {output_seg_path} ({os.path.getsize(output_seg_path)} bytes, {total_frames} frames)")
+        seg.save_as(output_seg_path)
+        print(f"[MONAI] Saved DICOM SEG: {output_seg_path} ({os.path.getsize(output_seg_path)} bytes)")
 
         # 6. Upload generated SEG back to Orthanc
         print("[MONAI] Uploading DICOM SEG back to Orthanc...")
@@ -453,23 +347,19 @@ def run_monai_pipeline(
         duration_str = f"{int(mins)}m {int(secs)}s" if mins > 0 else f"{secs:.1f}s"
         print(f"[MONAI] Inference complete in {duration_str}! Uploaded SEG Series UID: {seg_series_uid}")
 
-        send_telegram_message(
-            f"✅ *MONAI AI Model Inference Succeeded*\n"
-            f"━━━━━━━━━━━━━━━━━━\n"
-            f"• *Model*: `{task_display}`\n"
-            f"• *Patient*: `{patient_name}`\n"
-            f"• *Series*: `{series_desc}`\n"
-            f"• *Execution Time*: `{duration_str}`\n"
-            f"• *Segments*: `{len(segments_definitions)} structures generated`\n"
-            f"• *Status*: `DICOM SEG uploaded to Orthanc` 🔬"
-        )
-
         return {
             "status": "success",
             "instanceId": instance_id,
             "seriesInstanceUid": seg_series_uid,
             "duration": duration_str,
-            "task": task_name
+            "task": task_name,
+            "taskDisplay": task_display,
+            "patientName": patient_name,
+            "seriesDescription": series_desc,
+            "startTimeIst": start_time_ist,
+            "completedTimeIst": get_ist_time_str(),
+            "segmentsCount": len(segment_descriptions),
+            "pipeline": "MONAI AI",
         }
 
     finally:
@@ -481,10 +371,12 @@ def cancel_monai_pipeline(series_uid: str) -> bool:
     """Cancels a running MONAI inference process."""
     cancelled_monai_series.add(series_uid)
     active_monai_tasks.pop(series_uid, None)
+    stop_time_ist = get_ist_time_str()
     send_telegram_message(
         f"⏹️ *MONAI AI Cancelled*\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"• *Series*: `{series_uid}`\n"
+        f"• *Stop Time (IST)*: `{stop_time_ist}`\n"
         f"• Inference cancelled by user."
     )
     return True

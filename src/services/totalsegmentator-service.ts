@@ -44,10 +44,7 @@ export const totalsegmentatorService = {
         }
 
         const data = await response.json();
-        return {
-            instanceId: data.instanceId,
-            seriesInstanceUid: data.seriesInstanceUid,
-        };
+        return data;
     },
 
     /**

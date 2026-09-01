@@ -40,4 +40,7 @@ export const API_ENDPOINTS = {
     INSTALLED_MODELS: `${API_BASE_URL}/api/monai/installed-models`,
     DOWNLOAD: (seriesUid: string) => `${API_BASE_URL}/api/monai/download/${encodeURIComponent(seriesUid)}`,
   },
+  TELEGRAM: {
+    NOTIFY_COMPLETE: `${API_BASE_URL}/api/telegram/notify-complete`,
+  },
 } as const;
