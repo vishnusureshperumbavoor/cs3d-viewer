@@ -13,6 +13,8 @@ export interface SegmentStructure {
   rgba: [number, number, number];
   voxelCount: number;
   volumeCm3: number;
+  centroid?: [number, number, number];
+  referencedSopUid?: string;
 }
 
 export interface DicomSegData {
@@ -172,8 +174,8 @@ export const dicomSegService = {
       }
     }
 
-    if (!fileBuffer) {
-      throw new Error("Unable to fetch DICOM SEG file from Orthanc.");
+    if (!fileBuffer || fileBuffer.byteLength < 132) {
+      throw new Error("Unable to fetch valid DICOM SEG file from Orthanc (file may have been deleted or empty).");
     }
 
     // 2. Parse DICOM SEG with dcmjs
@@ -241,6 +243,19 @@ export const dicomSegService = {
     const sliceMaskMap = new Map<string, Record<number, Uint8Array>>();
     const pffgList = dataset.PerFrameFunctionalGroupsSequence || [];
 
+    interface SegAccumulator {
+      sumX: number;
+      sumY: number;
+      sumZ: number;
+      count: number;
+      peakSopUid: string;
+      peakVoxelCount: number;
+      peakWorldX: number;
+      peakWorldY: number;
+      peakWorldZ: number;
+    }
+    const segAccumulators = new Map<number, SegAccumulator>();
+
     for (let i = 0; i < numberOfFrames && i < pffgList.length; i++) {
       const fg = pffgList[i];
       const sop = fg.DerivationImageSequence?.[0]?.SourceImageSequence?.[0]?.ReferencedSOPInstanceUID;
@@ -252,7 +267,18 @@ export const dicomSegService = {
       const frameBytes = pixelData.subarray(frameOffset, frameOffset + frameByteLength);
       const unpacked = new Uint8Array(framePixelCount);
 
+      const ipp = fg.PlanePositionSequence?.[0]?.ImagePositionPatient || [0, 0, 0];
+      const iop = fg.PlaneOrientationSequence?.[0]?.ImageOrientationPatient || [1, 0, 0, 0, 1, 0];
+      const rowCos = [Number(iop[0]), Number(iop[1]), Number(iop[2])];
+      const colCos = [Number(iop[3]), Number(iop[4]), Number(iop[5])];
+      const origin = [Number(ipp[0]), Number(ipp[1]), Number(ipp[2])];
+      const spY = Number(pixelSpacing[0] || 1);
+      const spX = Number(pixelSpacing[1] || 1);
+
       let activeCount = 0;
+      let frameSumR = 0;
+      let frameSumC = 0;
+
       for (let p = 0; p < framePixelCount; p++) {
         const byteIdx = Math.floor(p / 8);
         const bitIdx = p % 8;
@@ -260,6 +286,8 @@ export const dicomSegService = {
         if (isSet) {
           unpacked[p] = 1;
           activeCount++;
+          frameSumR += Math.floor(p / columns);
+          frameSumC += p % columns;
         }
       }
 
@@ -272,14 +300,57 @@ export const dicomSegService = {
         const segStruct = segmentsByNum.get(segNum);
         if (segStruct) {
           segStruct.voxelCount += activeCount;
+
+          if (!segAccumulators.has(segNum)) {
+            segAccumulators.set(segNum, {
+              sumX: 0,
+              sumY: 0,
+              sumZ: 0,
+              count: 0,
+              peakSopUid: sop,
+              peakVoxelCount: 0,
+              peakWorldX: 0,
+              peakWorldY: 0,
+              peakWorldZ: 0,
+            });
+          }
+          const acc = segAccumulators.get(segNum)!;
+          const avgR = frameSumR / activeCount;
+          const avgC = frameSumC / activeCount;
+          const worldX = origin[0] + avgC * spX * rowCos[0] + avgR * spY * colCos[0];
+          const worldY = origin[1] + avgC * spX * rowCos[1] + avgR * spY * colCos[1];
+          const worldZ = origin[2] + avgC * spX * rowCos[2] + avgR * spY * colCos[2];
+
+          acc.sumX += worldX * activeCount;
+          acc.sumY += worldY * activeCount;
+          acc.sumZ += worldZ * activeCount;
+          acc.count += activeCount;
+
+          // Track the peak slice with the most voxels (largest cross-sectional area)
+          if (activeCount > acc.peakVoxelCount) {
+            acc.peakVoxelCount = activeCount;
+            acc.peakSopUid = sop;
+            acc.peakWorldX = worldX;
+            acc.peakWorldY = worldY;
+            acc.peakWorldZ = worldZ;
+          }
         }
       }
     }
 
-    // 5. Calculate physical volume in cm3 (cm^3 = mm^3 / 1000)
+    // 5. Calculate physical volume in cm3 (cm^3 = mm^3 / 1000) and peak focal point
     const voxelVolMm3 = (pixelSpacing[0] || 1) * (pixelSpacing[1] || 1) * (sliceThickness || 1);
     segments.forEach((seg) => {
       seg.volumeCm3 = Number(((seg.voxelCount * voxelVolMm3) / 1000).toFixed(1));
+      const acc = segAccumulators.get(seg.segmentNumber);
+      if (acc && acc.count > 0) {
+        seg.centroid = [
+          Number(acc.peakWorldX.toFixed(2)),
+          Number(acc.peakWorldY.toFixed(2)),
+          Number(acc.peakWorldZ.toFixed(2)),
+        ];
+        seg.referencedSopUid = acc.peakSopUid;
+      }
     });
 
     return {

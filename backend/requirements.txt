@@ -5,3 +5,6 @@ totalsegmentator
 pydicom
 huggingface_hub
 python-multipart
+monai
+scipy
+highdicom

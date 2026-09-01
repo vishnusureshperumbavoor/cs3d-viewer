@@ -8,6 +8,20 @@ root_dir = os.path.dirname(backend_dir)
 load_dotenv(os.path.join(root_dir, ".env"))
 load_dotenv(os.path.join(backend_dir, ".env"))
 
+from datetime import datetime, timezone, timedelta
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def get_ist_time_str(dt: datetime = None) -> str:
+    """Returns formatted date and time in Indian Standard Time (IST)."""
+    if dt is None:
+        dt = datetime.now(IST)
+    elif dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc).astimezone(IST)
+    else:
+        dt = dt.astimezone(IST)
+    return dt.strftime("%d %b %Y, %I:%M:%S %p IST")
+
 def send_telegram_message(message: str, parse_mode: str = "Markdown") -> bool:
     """Send a notification message via Telegram Bot API if configured."""
     token = os.getenv("TELEGRAM_BOT_TOKEN")

@@ -2,6 +2,7 @@ import React from "react";
 import { DicomSegData, SegmentStructure } from "../../services/dicom-seg-service";
 import { renderPresetIcon } from "./PresetIcons";
 import { TotalSegmentatorTab } from "./TotalSegmentatorTab";
+import { MonaiTab } from "./MonaiTab";
 
 export const VOLUME_PRESETS = [
   {
@@ -50,8 +51,8 @@ type RightPanelProps = {
   onToggleSegmentVisibility: (segNum: number) => void;
   opacity: number;
   onChangeOpacity: (val: number) => void;
-  activeTab?: "segmentation" | "presets" | "totalsegmentator";
-  onChangeTab?: (tab: "segmentation" | "presets" | "totalsegmentator") => void;
+  activeTab?: "segmentation" | "presets" | "totalsegmentator" | "monai";
+  onChangeTab?: (tab: "segmentation" | "presets" | "totalsegmentator" | "monai") => void;
   active3DPreset?: string;
   onSelect3DPreset?: (presetId: string) => void;
   onResetCameras?: () => void;
@@ -65,6 +66,7 @@ type RightPanelProps = {
   };
   segmentingSeriesUid?: string | null;
   onRunTotalSegmentator?: (seriesUid: string, task?: string, fast?: boolean) => void;
+  onRunMonai?: (seriesUid: string, task: string, scoreThreshold?: number) => void;
   loadedSegs?: Array<{ seriesUid: string; seriesDescription: string; modality: string }>;
   segDataMap?: Record<string, DicomSegData>;
   onSelectSegSeries?: (imageSeriesUid: string, segSeriesUid: string) => void;
@@ -72,6 +74,8 @@ type RightPanelProps = {
   licenseInfo?: { hasLicense: boolean; licenseMasked?: string | null };
   onOpenLicenseModal?: (task?: any) => void;
   activeSegSeriesUid?: string | null;
+  onNavigateToSegment?: (segment: SegmentStructure) => void;
+  selectedSegmentNumber?: number | null;
 };
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -92,6 +96,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   selectedSeriesMetadata,
   segmentingSeriesUid,
   onRunTotalSegmentator,
+  onRunMonai,
   loadedSegs,
   segDataMap,
   onSelectSegSeries,
@@ -99,6 +104,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   licenseInfo,
   onOpenLicenseModal,
   activeSegSeriesUid,
+  onNavigateToSegment,
+  selectedSegmentNumber,
 }) => {
   const segments = segData?.segments || [];
 
@@ -114,7 +121,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
     });
   };
 
-  const handleTabClick = (tab: "segmentation" | "presets" | "totalsegmentator") => {
+  const handleTabClick = (tab: "segmentation" | "presets" | "totalsegmentator" | "monai") => {
     onChangeTab?.(tab);
     if (!isOpen) {
       onToggle();
@@ -180,7 +187,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             </svg>
           </button>
 
-          {/* 3. totalSegmentor Icon (Last) */}
+          {/* 3. totalSegmentor Icon */}
           <button
             className={`seg-collapsed-icon-btn ${activeTab === "totalsegmentator" ? "active" : ""}`}
             onClick={() => handleTabClick("totalsegmentator")}
@@ -188,6 +195,16 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             aria-label="totalSegmentor"
           >
             <span style={{ fontSize: "1.15rem" }}>🧠</span>
+          </button>
+
+          {/* 4. MONAI AI Icon */}
+          <button
+            className={`seg-collapsed-icon-btn ${activeTab === "monai" ? "active" : ""}`}
+            onClick={() => handleTabClick("monai")}
+            title="MONAI AI Models"
+            aria-label="MONAI AI Models"
+          >
+            <span style={{ fontSize: "1.15rem" }}>🔬</span>
           </button>
         </div>
       </aside>
@@ -220,7 +237,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             </svg>
           </button>
 
-          {/* Tab Navigation: Segments, 3D presets, totalSegmentor (Icon-only) */}
+          {/* Tab Navigation: Segments, 3D presets, totalSegmentor, MONAI (Icon-only) */}
           <div className="seg-tab-buttons">
             {/* 1. Segments */}
             <button
@@ -255,7 +272,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               </svg>
             </button>
 
-            {/* 3. totalSegmentor (Last) */}
+            {/* 3. totalSegmentor */}
             <button
               className={`seg-tab-btn ${activeTab === "totalsegmentator" ? "active" : ""}`}
               onClick={() => handleTabClick("totalsegmentator")}
@@ -264,12 +281,34 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             >
               <span style={{ fontSize: "1.15rem" }}>🧠</span>
             </button>
+
+            {/* 4. MONAI AI */}
+            <button
+              className={`seg-tab-btn ${activeTab === "monai" ? "active" : ""}`}
+              onClick={() => handleTabClick("monai")}
+              title="MONAI AI Models"
+              aria-label="MONAI AI Models"
+            >
+              <span style={{ fontSize: "1.15rem" }}>🔬</span>
+            </button>
           </div>
         </div>
       </div>
 
       <div className="seg-panel-body">
-        {activeTab === "totalsegmentator" ? (
+        {activeTab === "monai" ? (
+          <MonaiTab
+            selectedSeriesUid={selectedSeriesUid}
+            selectedSeriesMetadata={selectedSeriesMetadata}
+            segmentingSeriesUid={segmentingSeriesUid}
+            onRunMonai={onRunMonai}
+            loadedSegs={loadedSegs}
+            segDataMap={segDataMap}
+            onSelectSegSeries={onSelectSegSeries}
+            onDeleteSegSeries={onDeleteSegSeries}
+            activeSegSeriesUid={activeSegSeriesUid}
+          />
+        ) : activeTab === "totalsegmentator" ? (
           <TotalSegmentatorTab
             selectedSeriesUid={selectedSeriesUid}
             selectedSeriesMetadata={selectedSeriesMetadata}
@@ -393,19 +432,52 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   </button>
                 </div>
 
+                {/* Condition-specific negative findings banner */}
+                {segments.length === 1 &&
+                  (segments[0].label.toLowerCase().includes("no acute") ||
+                   (segments[0].description && segments[0].description.toLowerCase().includes("no acute")) ||
+                   segments[0].label.toLowerCase().includes("no finding")) && (
+                    <div
+                      style={{
+                        background: "rgba(16, 185, 129, 0.10)",
+                        border: "1px solid rgba(16, 185, 129, 0.35)",
+                        borderRadius: "10px",
+                        padding: "12px 14px",
+                        marginBottom: "12px",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "10px",
+                      }}
+                    >
+                      <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>🟢</span>
+                      <div>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#34d399" }}>
+                          No Acute Pathology Detected
+                        </div>
+                        <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "3px", lineHeight: 1.4 }}>
+                          The AI model analyzed this series and found no acute lesions matching this condition.
+                        </div>
+                      </div>
+                    </div>
+                )}
+
                 {/* Segments List */}
                 <div className="seg-list">
                   {segments.map((seg: SegmentStructure) => {
                     const isVisible =
                       segmentVisibility[seg.segmentNumber] ?? true;
+                    const isSelected = selectedSegmentNumber === seg.segmentNumber;
 
                     return (
                       <div
                         key={seg.segmentNumber}
-                        className={`seg-item-card ${isVisible ? "active" : "hidden"}`}
-                        onClick={() =>
-                          onToggleSegmentVisibility(seg.segmentNumber)
-                        }
+                        className={`seg-item-card ${isVisible ? "active" : "hidden"} ${isSelected ? "selected-focus" : ""}`}
+                        onClick={() => {
+                          if (onNavigateToSegment) {
+                            onNavigateToSegment(seg);
+                          }
+                        }}
+                        title={`Click to navigate/focus on ${seg.description || seg.label}`}
                       >
                         <div className="seg-item-left">
                           <span

@@ -7,10 +7,12 @@ import {
   RightPanel,
 } from "../components";
 import { resetMPRCameras } from "../components/viewport/MPRViewer";
-import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS } from "../utils/mpr-utils";
+import { RENDERING_ENGINE_ID, MPR_VIEWPORT_IDS, jumpToWorldCoordinate, jumpTo2DSegmentSlice } from "../utils/mpr-utils";
 import { useStudyImages } from "../hooks";
 import { totalsegmentatorService } from "../services/totalsegmentator-service";
-import { dicomSegService, DicomSegData } from "../services/dicom-seg-service";
+import { monaiService } from "../services/monai-service";
+import { notifyTelegramSegmentationComplete } from "../services/telegram-service";
+import { dicomSegService, DicomSegData, SegmentStructure } from "../services/dicom-seg-service";
 import { TOTALSEGMENTATOR_TASKS, TotalSegTask } from "../constants/totalsegmentator-tasks";
 
 export default function ViewerPage() {
@@ -69,6 +71,19 @@ export default function ViewerPage() {
   const [isSegPanelOpen, setIsSegPanelOpen] = useState(true);
   const [segmentOpacity, setSegmentOpacity] = useState(0.5);
   const [segVisibility, setSegVisibility] = useState<Record<number, boolean>>({});
+  const [selectedSegmentNumber, setSelectedSegmentNumber] = useState<number | null>(null);
+
+  const handleNavigateToSegment = (seg: SegmentStructure) => {
+    setSelectedSegmentNumber(seg.segmentNumber);
+    if (segVisibility[seg.segmentNumber] === false) {
+      setSegVisibility((prev) => ({ ...prev, [seg.segmentNumber]: true }));
+    }
+    if (seg.centroid) {
+      jumpToWorldCoordinate(seg.centroid, seg.referencedSopUid, activeImageIds);
+    } else if (seg.referencedSopUid) {
+      jumpTo2DSegmentSlice(seg.referencedSopUid, undefined, activeImageIds);
+    }
+  };
 
   useEffect(() => {
     if (segInstances.length === 0) return;
@@ -81,15 +96,22 @@ export default function ViewerPage() {
         segInstances.map(async (inst) => {
           try {
             const data = await dicomSegService.loadStudySegmentation(inst);
-            if (!isCancelled) {
+            if (!isCancelled && data) {
               setSegDataMap((prev) => ({
                 ...prev,
                 [inst.seriesInstanceUid]: data,
               }));
               setActiveSegSeriesUid((prev) => prev || inst.seriesInstanceUid);
             }
-          } catch (err) {
-            console.warn("Failed to load segmentation series:", inst.seriesInstanceUid, err);
+          } catch (err: any) {
+            if (!isCancelled) {
+              setSegDataMap((prev) => {
+                const next = { ...prev };
+                delete next[inst.seriesInstanceUid];
+                return next;
+              });
+              console.log("[ViewerPage] Segmentation series skipped (deleted or invalid):", inst.seriesInstanceUid);
+            }
           }
         })
       );
@@ -163,7 +185,9 @@ export default function ViewerPage() {
     }
   };
   const [active3DPreset, setActive3DPreset] = useState<string>("CT-AAA");
-  const [activeRightSidebarTab, setActiveRightSidebarTab] = useState<"segmentation" | "presets" | "totalsegmentator">("segmentation");
+  const [activeRightSidebarTab, setActiveRightSidebarTab] = useState<
+    "segmentation" | "presets" | "totalsegmentator" | "monai"
+  >("segmentation");
 
   useEffect(() => {
     if (viewMode === "3d") {
@@ -256,7 +280,7 @@ export default function ViewerPage() {
     setSegmentingStatus("running");
     setTotalSegError(null);
     try {
-      await totalsegmentatorService.run(
+      const res: any = await totalsegmentatorService.run(
         patientDetails?.studyInstanceUid || "",
         seriesUid,
         task,
@@ -264,13 +288,77 @@ export default function ViewerPage() {
         abortController.signal
       );
       await refetch();
+      if (res?.seriesInstanceUid) {
+        setActiveSegSeriesUid(res.seriesInstanceUid);
+      }
       setSegmentingStatus("completed");
+      void notifyTelegramSegmentationComplete({
+        pipeline: res?.pipeline || "TotalSegmentator AI",
+        taskName: res?.taskDisplay || task,
+        patientName: res?.patientName || patientDetails?.patientName || "Anonymous",
+        seriesDescription: res?.seriesDescription || selectedSeriesMetadata?.seriesDescription || "CT Series",
+        startTimeIst: res?.startTimeIst,
+        completedTimeIst: res?.completedTimeIst,
+        duration: res?.duration,
+        segmentsCount: res?.segmentsCount,
+      });
     } catch (err: any) {
       if (err.name === "AbortError" || abortController.signal.aborted) {
         console.log("[ViewerPage] TotalSegmentator run cancelled by user.");
       } else {
         console.error("TotalSegmentator run failed:", err);
         setTotalSegError(err.message || "An unexpected error occurred during TotalSegmentator execution.");
+      }
+      setSegmentingSeriesUid(null);
+      setSegmentingTaskName(null);
+    } finally {
+      totalSegAbortControllerRef.current = null;
+    }
+  };
+
+  const handleRunMonai = async (
+    seriesUid: string,
+    task: string = "lung_nodule_ct_detection",
+    scoreThreshold: number = 0.20
+  ) => {
+    if (!seriesUid || segmentingSeriesUid) return;
+
+    const abortController = new AbortController();
+    totalSegAbortControllerRef.current = abortController;
+
+    setSegmentingSeriesUid(seriesUid);
+    setSegmentingTaskName(`MONAI: ${task}`);
+    setSegmentingStatus("running");
+    setTotalSegError(null);
+    try {
+      const res: any = await monaiService.run(
+        patientDetails?.studyInstanceUid || "",
+        seriesUid,
+        task,
+        scoreThreshold,
+        abortController.signal
+      );
+      await refetch();
+      if (res?.seriesInstanceUid) {
+        setActiveSegSeriesUid(res.seriesInstanceUid);
+      }
+      setSegmentingStatus("completed");
+      void notifyTelegramSegmentationComplete({
+        pipeline: res?.pipeline || "MONAI AI",
+        taskName: res?.taskDisplay || task.replace(/_/g, " ").toUpperCase(),
+        patientName: res?.patientName || patientDetails?.patientName || "Anonymous",
+        seriesDescription: res?.seriesDescription || selectedSeriesMetadata?.seriesDescription || "CT Series",
+        startTimeIst: res?.startTimeIst,
+        completedTimeIst: res?.completedTimeIst,
+        duration: res?.duration,
+        segmentsCount: res?.segmentsCount,
+      });
+    } catch (err: any) {
+      if (err.name === "AbortError" || abortController.signal.aborted) {
+        console.log("[ViewerPage] MONAI run cancelled by user.");
+      } else {
+        console.error("MONAI run failed:", err);
+        setTotalSegError(err.message || "An unexpected error occurred during MONAI execution.");
       }
       setSegmentingSeriesUid(null);
       setSegmentingTaskName(null);
@@ -289,6 +377,7 @@ export default function ViewerPage() {
     setSegmentingStatus("running");
     if (seriesUid) {
       void totalsegmentatorService.cancel(seriesUid);
+      void monaiService.cancel(seriesUid);
     }
   };
 
@@ -302,10 +391,15 @@ export default function ViewerPage() {
   const handleDeleteSegSeries = async (segSeriesUid: string) => {
     if (!segSeriesUid) return;
     try {
-      await totalsegmentatorService.deleteSegSeries(segSeriesUid);
+      setSegDataMap((prev) => {
+        const next = { ...prev };
+        delete next[segSeriesUid];
+        return next;
+      });
       if (activeSegSeriesUid === segSeriesUid) {
         setActiveSegSeriesUid(null);
       }
+      await totalsegmentatorService.deleteSegSeries(segSeriesUid);
       await refetch();
     } catch (err) {
       console.error("Failed to delete segmentation series:", err);
@@ -389,6 +483,7 @@ export default function ViewerPage() {
           selectedSeriesMetadata={selectedSeriesMetadata}
           segmentingSeriesUid={segmentingSeriesUid}
           onRunTotalSegmentator={handleRunTotalSegmentator}
+          onRunMonai={handleRunMonai}
           loadedSegs={seriesList.filter((s) => s.modality === "SEG")}
           segDataMap={segDataMap}
           onSelectSegSeries={(imageSeriesUid, segSeriesUid) => {
@@ -399,6 +494,8 @@ export default function ViewerPage() {
           licenseInfo={licenseInfo}
           onOpenLicenseModal={handleOpenLicenseModal}
           activeSegSeriesUid={activeSegSeriesUid}
+          onNavigateToSegment={handleNavigateToSegment}
+          selectedSegmentNumber={selectedSegmentNumber}
         />
       </main>
     </div>

@@ -34,4 +34,13 @@ export const API_ENDPOINTS = {
     SAMPLE_STATUS: `${API_BASE_URL}/api/dataset/sample-status`,
     IMPORT_SAMPLE_STREAM: `${API_BASE_URL}/api/dataset/import-sample-stream`,
   },
+  MONAI: {
+    RUN: `${API_BASE_URL}/api/monai/run`,
+    CANCEL: `${API_BASE_URL}/api/monai/cancel`,
+    INSTALLED_MODELS: `${API_BASE_URL}/api/monai/installed-models`,
+    DOWNLOAD: (seriesUid: string) => `${API_BASE_URL}/api/monai/download/${encodeURIComponent(seriesUid)}`,
+  },
+  TELEGRAM: {
+    NOTIFY_COMPLETE: `${API_BASE_URL}/api/telegram/notify-complete`,
+  },
 } as const;

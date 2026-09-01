@@ -24,13 +24,17 @@ class OrthancClient:
             print(f"[OrthancClient] Error looking up series UID {series_uid}: {e}")
         return None
 
+    def get_series(self, series_id: str) -> Dict[str, Any]:
+        """Retrieves details of a series."""
+        url = f"{self.base_url}/series/{series_id}"
+        response = requests.get(url, auth=self.auth, timeout=10)
+        response.raise_for_status()
+        return response.json()
+
     def get_series_instance_uid(self, series_id: str) -> Optional[str]:
         """Retrieve the DICOM SeriesInstanceUID for an Orthanc internal ID."""
-        url = f"{self.base_url}/series/{series_id}"
         try:
-            response = requests.get(url, auth=self.auth, timeout=10)
-            response.raise_for_status()
-            return response.json().get("MainDicomTags", {}).get("SeriesInstanceUID")
+            return self.get_series(series_id).get("MainDicomTags", {}).get("SeriesInstanceUID")
         except Exception as e:
             print(f"[OrthancClient] Error fetching series details {series_id}: {e}")
         return None

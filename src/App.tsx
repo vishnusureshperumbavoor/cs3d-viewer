@@ -1,6 +1,7 @@
-import { ViewerPage, WorklistPage } from "./pages";
+import { ViewerPage, WorklistPage, UploadPage } from "./pages";
 
 const ROOT_PATH = "/";
+const UPLOAD_PATHS = ["/upload", "/local"];
 const LEGACY_VIEWER_PATHS = ["/patientid", "/studyid", "/seriesid", "/instanceid"];
 
 const getCurrentPath = () => window.location.pathname.toLowerCase();
@@ -11,6 +12,10 @@ const hasStudyQueryParam = () => {
 
 export default function App() {
   const path = getCurrentPath();
+
+  if (UPLOAD_PATHS.includes(path)) {
+    return <UploadPage />;
+  }
 
   if (path === ROOT_PATH) {
     return hasStudyQueryParam() ? <ViewerPage /> : <WorklistPage />;

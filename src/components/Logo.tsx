@@ -21,7 +21,7 @@ export default function Logo(props: LogoProps) {
         textAnchor="middle"
         dominantBaseline="central"
       >
-        VMI
+        VSP
       </text>
     </svg>
   );

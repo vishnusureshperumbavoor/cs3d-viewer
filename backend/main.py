@@ -1,14 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import segmentation_router, dataset_router
+from routers import segmentation_router, dataset_router, monai_router, telegram_router
 
 app = FastAPI(
-    title="3D DICOM Viewer AI Backend",
+    title="Medical Image Viewer & AI Backend",
     version="1.0.0",
-    description="FastAPI Backend for 3D DICOM Segmentation & Medical AI Inference",
 )
 
-# Enable CORS for the frontend
+# Enable CORS for local Vite dev server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,6 +19,8 @@ app.add_middleware(
 # Mount modular routers under /api
 app.include_router(segmentation_router, prefix="/api")
 app.include_router(dataset_router, prefix="/api")
+app.include_router(monai_router, prefix="/api")
+app.include_router(telegram_router, prefix="/api")
 
 @app.get("/health")
 def health_check():

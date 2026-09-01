@@ -5,6 +5,7 @@ import {
 } from "../services/dicomweb-service";
 import { mapInstancesToImageIds } from "../mappers/study-mapper";
 import { DicomWebInstance } from "../types/dicomweb";
+import { localDicomStore } from "../services/local-dicom-store";
 
 const getStudyInstanceUidFromUrl = () => {
   const query = new URLSearchParams(window.location.search);
@@ -12,8 +13,14 @@ const getStudyInstanceUidFromUrl = () => {
   return value.split(",")[0].trim();
 };
 
+const isLocalSource = () => {
+  const query = new URLSearchParams(window.location.search);
+  return query.get("source") === "local";
+};
+
 export const useStudyImages = () => {
   const studyInstanceUid = useMemo(() => getStudyInstanceUidFromUrl(), []);
+  const isLocal = useMemo(() => isLocalSource(), []);
 
   const [imageIds, setImageIds] = useState<string[]>([]);
   const [instances, setInstances] = useState<DicomWebInstance[]>([]);
@@ -33,14 +40,27 @@ export const useStudyImages = () => {
       setError(null);
 
       try {
-        const instances = await fetchStudyInstances(DEFAULT_WADO_BASE, studyInstanceUid);
-        if (isCancelled) {
-          return;
+        let loadedInstances: DicomWebInstance[];
+
+        if (isLocal) {
+          // Read from in-memory local store
+          loadedInstances = localDicomStore.getStudyInstances(studyInstanceUid);
+          if (loadedInstances.length === 0) {
+            throw new Error(
+              "No local DICOM data found. The data may have been lost after a page refresh. " +
+              "Please go back to /upload and re-upload your files."
+            );
+          }
+        } else {
+          // Fetch from Orthanc via DICOMweb
+          loadedInstances = await fetchStudyInstances(DEFAULT_WADO_BASE, studyInstanceUid);
         }
 
-        const ids = mapInstancesToImageIds(instances);
+        if (isCancelled) return;
+
+        const ids = mapInstancesToImageIds(loadedInstances);
         setImageIds(ids);
-        setInstances(instances);
+        setInstances(loadedInstances);
 
         if (ids.length === 0) {
           setError("No displayable instances found for the selected study.");
@@ -67,12 +87,17 @@ export const useStudyImages = () => {
     return () => {
       isCancelled = true;
     };
-  }, [studyInstanceUid]);
+  }, [studyInstanceUid, isLocal]);
 
   const refetch = async () => {
     if (!studyInstanceUid) return;
     try {
-      const updatedInstances = await fetchStudyInstances(DEFAULT_WADO_BASE, studyInstanceUid);
+      let updatedInstances: DicomWebInstance[];
+      if (isLocal) {
+        updatedInstances = localDicomStore.getStudyInstances(studyInstanceUid);
+      } else {
+        updatedInstances = await fetchStudyInstances(DEFAULT_WADO_BASE, studyInstanceUid);
+      }
       const ids = mapInstancesToImageIds(updatedInstances);
       setImageIds(ids);
       setInstances(updatedInstances);
@@ -87,3 +112,4 @@ export const useStudyImages = () => {
     refetch,
   };
 };
+

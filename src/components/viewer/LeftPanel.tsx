@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import SeriesThumbnail from "../SeriesThumbnail";
 import { DicomSegData } from "../../services/dicom-seg-service";
 import { totalsegmentatorService } from "../../services/totalsegmentator-service";
@@ -35,28 +35,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   onSelectSegSeries,
   onDeleteSegSeries,
 }) => {
-  const [pushingUid, setPushingUid] = useState<string | null>(null);
   const [downloadingUid, setDownloadingUid] = useState<string | null>(null);
-  const [hfFiles, setHfFiles] = useState<Array<{ filename: string; url: string }>>([]);
-
-  useEffect(() => {
-    totalsegmentatorService.getHFSegmentations().then(setHfFiles);
-  }, [seriesList.length]);
-
-  const handlePushToHF = async (segSeriesUid: string) => {
-    if (pushingUid) return;
-    setPushingUid(segSeriesUid);
-    try {
-      await totalsegmentatorService.pushSegToHuggingFace(segSeriesUid);
-      const updated = await totalsegmentatorService.getHFSegmentations();
-      setHfFiles(updated);
-    } catch (err: any) {
-      console.error("Push to HF failed:", err);
-      alert(err.message || "Failed to push segmentation to Hugging Face.");
-    } finally {
-      setPushingUid(null);
-    }
-  };
 
   const handleDownloadSeg = async (segSeriesUid: string, segTitle: string) => {
     if (downloadingUid) return;
@@ -193,28 +172,25 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                   parsedSeg?.seriesDescription ||
                   "Segmentation";
 
+                const manufacturer = (parsedSeg?.manufacturer || "").toLowerCase();
+                const contentLabel = (parsedSeg?.contentLabel || "").toLowerCase();
+                const seriesDescLower = (segSeries.seriesDescription || "").toLowerCase();
+
+                const isMonai = Boolean(
+                  manufacturer.includes("monai") ||
+                  contentLabel.startsWith("monai_") ||
+                  seriesDescLower.startsWith("monai:")
+                );
+
                 const isTotalSeg = Boolean(
-                  segSeries.seriesDescription?.toLowerCase().includes("totalsegmentator") ||
-                  parsedSeg?.seriesDescription?.toLowerCase().includes("totalsegmentator") ||
-                  parsedSeg?.contentLabel?.toUpperCase().startsWith("TS_") ||
-                  parsedSeg?.contentDescription?.toLowerCase().includes("totalsegmentator")
+                  manufacturer.includes("totalsegmentator") ||
+                  contentLabel.startsWith("ts_") ||
+                  seriesDescLower.includes("totalsegmentator") ||
+                  (!isMonai && !manufacturer)
                 );
 
-                const isUploadedToHF = Boolean(
-                  hfFiles.some((f) => {
-                    const fnNorm = (f.filename || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("totalsegmentator", "").replace("dcm", "");
-                    const titleNorm = (segTitle || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("totalsegmentator", "");
-                    const labelNorm = (parsedSeg?.contentLabel || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace("ts", "");
-
-                    if (!fnNorm || (!titleNorm && !labelNorm)) return false;
-
-                    return (
-                      (titleNorm && (fnNorm.includes(titleNorm) || titleNorm.includes(fnNorm))) ||
-                      (labelNorm && (fnNorm.includes(labelNorm) || labelNorm.includes(fnNorm))) ||
-                      (fnNorm.includes("livervessels") && (titleNorm.includes("livervessels") || titleNorm.includes("hepaticvessels")))
-                    );
-                  })
-                );
+                const segIcon = isMonai ? "🔬" : isTotalSeg ? "🧠" : "🧬";
+                const segBadgeLabel = isMonai ? "MONAI" : isTotalSeg ? "TotalSeg" : (segSeries.modality || "SEG");
 
                 return (
                   <div
@@ -224,11 +200,11 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                     title={segTitle}
                   >
                     <div className="series-thumbnail-container seg-thumb-container">
-                      <span style={{ fontSize: "1.5rem" }} role="img" aria-label="Segmentation">
-                        🧬
+                      <span style={{ fontSize: "1.5rem" }} role="img" aria-label={isMonai ? "MONAI AI" : "TotalSegmentator AI"}>
+                        {segIcon}
                       </span>
-                      <div className="thumbnail-modality-badge">
-                        {segSeries.modality || "SEG"}
+                      <div className={`thumbnail-modality-badge ${isMonai ? "monai-seg-badge" : isTotalSeg ? "totalseg-seg-badge" : ""}`}>
+                        {segBadgeLabel}
                       </div>
                     </div>
                     <div className="series-info">
@@ -240,51 +216,27 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                           {parsedSeg?.segments.length || 0} Segments
                         </span>
                         <div className="seg-card-action-btns">
-                          {isTotalSeg && (
-                            <button
-                              className="seg-series-download-btn"
-                              disabled={downloadingUid === segSeries.seriesUid}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownloadSeg(segSeries.seriesUid, segTitle);
-                              }}
-                              title={`Download ${segTitle} DICOM (.dcm)`}
-                              aria-label={`Download ${segTitle} DICOM`}
-                            >
-                              {downloadingUid === segSeries.seriesUid ? (
-                                <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
-                              ) : (
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                  <polyline points="7 10 12 15 17 10" />
-                                  <line x1="12" y1="15" x2="12" y2="3" />
-                                </svg>
-                              )}
-                            </button>
-                          )}
-                          {isTotalSeg && !isUploadedToHF && (
-                            <button
-                              className="seg-series-upload-btn"
-                              disabled={pushingUid === segSeries.seriesUid}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePushToHF(segSeries.seriesUid);
-                              }}
-                              title={`Upload ${segTitle} to Hugging Face dataset`}
-                              aria-label={`Upload ${segTitle} to Hugging Face dataset`}
-                            >
-                              {pushingUid === segSeries.seriesUid ? (
-                                <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
-                              ) : (
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                  <polyline points="17 8 12 3 7 8" />
-                                  <line x1="12" y1="3" x2="12" y2="15" />
-                                </svg>
-                              )}
-                            </button>
-                          )}
-                          {onDeleteSegSeries && isTotalSeg && (
+                          <button
+                            className="seg-series-download-btn"
+                            disabled={downloadingUid === segSeries.seriesUid}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadSeg(segSeries.seriesUid, segTitle);
+                            }}
+                            title={`Download ${segTitle} DICOM (.dcm)`}
+                            aria-label={`Download ${segTitle} DICOM`}
+                          >
+                            {downloadingUid === segSeries.seriesUid ? (
+                              <span className="loading-spinner small" style={{ width: "10px", height: "10px" }} />
+                            ) : (
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                              </svg>
+                            )}
+                          </button>
+                          {onDeleteSegSeries && (
                             <button
                               className="seg-series-delete-btn"
                               onClick={(e) => {
