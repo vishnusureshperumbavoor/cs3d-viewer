@@ -56,7 +56,7 @@ if [ ! -d "$VENV_DIR" ]; then
             echo "   (or: sudo snap install astral-uv)"
             echo ""
             echo "Then run:"
-            echo "   npm run start:server -- --install"
+            echo "   npm run start:server --install"
             echo "=========================================================================="
             exit 1
         fi

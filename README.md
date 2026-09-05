@@ -117,7 +117,7 @@ flowchart TB
 Launch the Orthanc PACS server with DICOMweb support via Docker:
 
 ```bash
-docker compose up -d orthanc
+docker compose up -d
 ```
 
 * **Orthanc Web UI**: [http://localhost:8042](http://localhost:8042)
@@ -132,7 +132,7 @@ The backend launcher automatically configures virtual environments, GPU/CPU driv
 
 ```bash
 # First-time setup (creates virtual environment and installs dependencies)
-npm run start:server -- --install
+npm run start:server --install
 
 # Subsequent runs
 npm run start:server
